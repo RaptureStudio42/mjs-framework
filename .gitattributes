@@ -1,0 +1,24 @@
+# ModularJS — comment le reste du monde doit lire nos fichiers
+#
+# un `.mjs` d'ici est un COMPOSANT ModularJS (script Civet + gabarit + style SASS),
+# pas un module JavaScript de Node : l'extension est la même, le contenu n'a rien à
+# voir. Sans ces lignes, GitHub compte 444 fichiers de composants comme du JavaScript
+# (le langage principal du dépôt s'affiche de travers) et colore chaque exemple comme
+# du JS cassé — sur la page même où un visiteur découvre la syntaxe.
+#
+# linguist ne connaît PAS Civet (vérifié dans son languages.yml) : on emprunte la
+# grammaire HTML, qui lit la partie gabarit correctement et délègue `<script>`/`<style>`
+# sans rien colorer en erreur. `linguist-detectable=false` sort les .mjs des STATISTIQUES
+# de langage : le dépôt s'annonce en TypeScript, ce qu'est réellement le compilateur
+*.mjs linguist-language=HTML
+*.mjs linguist-detectable=false
+
+# fins de ligne normalisées à l'écriture (un contributeur sous Windows ne réécrit pas
+# 444 fichiers en CRLF au premier commit)
+*.mjs   text eol=lf
+*.civet text eol=lf
+*.ts    text eol=lf
+*.sass  text eol=lf
+*.scss  text eol=lf
+*.md    text eol=lf
+bin/mjs text eol=lf

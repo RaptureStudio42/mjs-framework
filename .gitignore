@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+tests/snapshots/*.actual.js
+tests/snapshots/_diff/
+
+# Default bundler output (when running tests without a dedicated outputDir)
+public/
+app/
+
+.sass-cache/

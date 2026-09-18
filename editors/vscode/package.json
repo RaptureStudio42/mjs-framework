@@ -1,0 +1,39 @@
+{
+  "name": "modularjs",
+  "displayName": "ModularJS",
+  "description": "Coloration syntaxique des composants ModularJS (.mjs) — script Civet, gabarit, table de routes (bloc <routes> et forme calculée @routes), blocs theme et style en SASS (ou le langage de lang=\"…\", côté script comme côté style), symboles $ $$ § µ @.",
+  "version": "1.9.0",
+  "publisher": "rapturestudio",
+  "license": "MIT",
+  "categories": ["Programming Languages"],
+  "keywords": ["modularjs", "mjs", "civet", "web components", "shadow dom"],
+  "repository": { "type": "git", "url": "git+https://github.com/RaptureStudio42/mjs-framework.git", "directory": "editors/vscode" },
+  "homepage": "https://modularjs.rapturestudio.fr",
+  "engines": { "vscode": "^1.70.0" },
+  "contributes": {
+    "languages": [
+      {
+        "id": "modularjs",
+        "aliases": ["ModularJS", "modularjs", "MJS"],
+        "extensions": [".mjs", ".html.mjs"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "modularjs",
+        "scopeName": "text.html.modularjs",
+        "path": "./syntaxes/modularjs.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.coffee": "coffeescript",
+          "meta.embedded.block.ts":     "typescript",
+          "meta.embedded.block.js":     "javascript",
+          "meta.embedded.block.sass":   "sass",
+          "meta.embedded.block.scss":   "scss",
+          "meta.embedded.block.less":   "less",
+          "meta.embedded.block.css":    "css"
+        }
+      }
+    ]
+  }
+}

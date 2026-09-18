@@ -1,0 +1,25 @@
+#!/usr/bin/env node
+// Bin entrypoint. En dev, exec le TypeScript via tsx. En prod, charge dist/cli.js
+// (compilé via `npm run build:self`).
+
+import { fileURLToPath } from 'url'
+import { dirname, join, resolve } from 'path'
+import { existsSync } from 'fs'
+
+const here = dirname(fileURLToPath(import.meta.url))
+const distCli = join(here, '..', 'dist', 'cli.js')
+const srcCli  = join(here, '..', 'src', 'cli.ts')
+
+if (existsSync(distCli)) {
+  // Build de prod
+  await import(distCli)
+} else if (existsSync(srcCli)) {
+  // Dev — utilise tsx pour exécuter le TS directement
+  const { spawn } = await import('child_process')
+  const tsxBin = resolve(here, '..', 'node_modules', '.bin', 'tsx')
+  const child = spawn(tsxBin, [srcCli, ...process.argv.slice(2)], { stdio: 'inherit' })
+  child.on('exit', (code) => process.exit(code ?? 0))
+} else {
+  console.error('[mjs] aucune entrée trouvée (ni dist/cli.js ni src/cli.ts)')
+  process.exit(1)
+}

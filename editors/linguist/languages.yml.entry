@@ -1,0 +1,15 @@
+# À coller dans lib/linguist/languages.yml, à sa place ALPHABÉTIQUE (entre « ModelChecking »
+# et « Modelica »). `language_id` est volontairement ABSENT : il est attribué par
+# `script/update-ids`, jamais écrit à la main.
+#
+# `type: markup` — comme Vue et Svelte : un composant est d'abord du gabarit, le script
+# n'en est qu'une section. `tm_scope` pointe la grammaire de editors/vscode/.
+ModularJS:
+  type: markup
+  color: "#6ea8fe"
+  extensions:
+  - ".mjs"
+  tm_scope: text.html.modularjs
+  ace_mode: html
+  codemirror_mode: htmlmixed
+  codemirror_mime_type: text/html

@@ -1,0 +1,119 @@
+{
+  "name": "mjs-framework",
+  "version": "2.4.0",
+  "description": "ModularJS (MJS) — framework front compile-time : réactivité résolue à la compilation (sans Proxy au runtime), Custom Elements + Shadow DOM, syntaxe .mjs (Civet par défaut). Compilateur + runtime + CLI dev/HMR.",
+  "license": "MIT",
+  "author": "Matrix",
+  "keywords": [
+    "framework",
+    "frontend",
+    "reactive",
+    "compiler",
+    "web-components",
+    "custom-elements",
+    "shadow-dom",
+    "civet",
+    "spa",
+    "mjs",
+    "modularjs"
+  ],
+  "homepage": "https://modularjs.rapturestudio.fr",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RaptureStudio42/mjs-framework.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RaptureStudio42/mjs-framework/issues"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./src/index.ts"
+    },
+    "./cli": "./dist/cli.js",
+    "./testing": {
+      "import": "./dist/testing.js",
+      "types": "./src/testing/index.ts"
+    },
+    "./ws": {
+      "import": "./dist/mjs-ws.js",
+      "types": "./src/mjs-ws/index.ts"
+    },
+    "./mjs-server": {
+      "import": "./dist/mjs-server.js",
+      "types": "./src/mjs-server/index.ts"
+    }
+  },
+  "bin": {
+    "mjs": "./bin/mjs"
+  },
+  "scripts": {
+    "build:self": "esbuild src/cli.ts src/index.ts src/bundler/worker.ts --bundle --platform=node --target=node20 --format=esm --packages=external --outdir=dist --entry-names=[name] && esbuild src/testing/index.ts --bundle --platform=node --target=node20 --format=esm --packages=external --outfile=dist/testing.js && esbuild src/mjs-ws/index.ts --bundle --platform=node --target=node20 --format=esm --packages=external --outfile=dist/mjs-ws.js && esbuild src/mjs-server/index.ts --bundle --platform=node --target=node20 --format=esm --packages=external --outfile=dist/mjs-server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "bash script/test-enclos.sh",
+    "test:brut": "mocha --recursive tests/ --extension ts --require tsx/esm --require ./tests/helpers/tmp-sweep.ts --exit",
+    "test:browser": "mocha tests/browser-smoke/smoke.browser.mts --require tsx/esm --exit --timeout 180000",
+    "lint": "eslint .",
+    "bench:ws": "tsx bench/mjs-ws-bench.ts",
+    "prepublishOnly": "npm run build:self && npm run typecheck && npm run lint && npm test",
+    "repetition": "bash script/repetition-publication.sh"
+  },
+  "files": [
+    "dist",
+    "src",
+    "bin",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@danielx/civet": "^0.9.5",
+    "@jridgewell/remapping": "^2.3.5",
+    "@jridgewell/sourcemap-codec": "^1.5.5",
+    "@jridgewell/trace-mapping": "^0.3.31",
+    "acorn": "^8.16.0",
+    "acorn-walk": "^8.3.5",
+    "chokidar": "^5.0.0",
+    "coffeescript": "^2.7.0",
+    "esbuild": "^0.28.1",
+    "magic-string": "^0.30.21",
+    "sass": "^1.99.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.12.0",
+    "@types/ws": "^8.18.1",
+    "eslint": "^10.7.0",
+    "happy-dom": "^20.9.0",
+    "mocha": "^11.7.6",
+    "playwright": "^1.61.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.64.0",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2",
+    "yaml": "^2.9.0"
+  },
+  "peerDependencies": {
+    "happy-dom": ">=15",
+    "sharp": ">=0.33",
+    "yaml": "^2.9.0"
+  },
+  "peerDependenciesMeta": {
+    "yaml": {
+      "optional": true
+    },
+    "happy-dom": {
+      "optional": true
+    },
+    "sharp": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

@@ -1,0 +1,31 @@
+# À coller dans lib/linguist/heuristics.yml, à sa place ALPHABÉTIQUE par extension.
+#
+# `.mjs` est disputée : le catalogue l'attribue déjà à JavaScript (modules ES de Node).
+# Les deux formats n'ont heureusement rien en commun — un composant ModularJS s'ouvre par
+# un bloc de premier niveau (`<script>`, `<style>`, `<theme>`) ou par une directive de
+# racine (`@css`, `@import`, `@routes`, `@persist`, `@preload`), toutes choses qu'un
+# module Node ne contient jamais. La règle sans motif à la fin (`language: JavaScript`)
+# est le repli : elle matche toujours, donc rien ne devient « indéterminé ».
+#
+# Le PREMIER motif (`\A\s*<`) est le plus large et le plus sûr : un composant qui n'a
+# QUE du gabarit — c'est la majorité, mesurée à 422 fichiers sur 648 dans nos deux dépôts
+# — commence par un chevron, et un module JavaScript ne le peut PAS (`<` en tête est une
+# erreur de syntaxe). Les suivants rattrapent les fichiers qui ouvrent par un bloc ou une
+# directive. Ils sont ancrés en début de LIGNE (`^`), en mode multiligne comme le reste du
+# fichier : un `<script>` cité dans une chaîne de caractères au milieu d'une ligne ne
+# déclenche donc rien.
+
+- extensions: ['.mjs']
+  rules:
+  - language: ModularJS
+    named_pattern: modularjs
+  - language: JavaScript
+
+# … et dans la section `named_patterns` du même fichier, à sa place alphabétique :
+
+  modularjs:
+  - '\A\s*<'
+  - '^\s*<script(?:\s+module)?(?:\s+lang=["''][a-z]+["''])?\s*>'
+  - '^\s*<style(?:\s+name=["''][^"'']*["''])?(?:\s+lang=["''][a-z]+["''])?\s*>'
+  - '^\s*<theme\s*>'
+  - '^\s*@(?:css|routes|import|persist|preload|display|i18n)\s'
