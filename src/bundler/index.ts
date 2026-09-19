@@ -42,6 +42,7 @@ import { MU_IMPORT_BODY, rewriteMuImportAst } from '../sigils.js'
 import { RUNTIME_LABELS } from '../runtime-labels.js'
 import { AT_RESERVED_NAMES, type TagRef, type TagRefKind } from '../parser/index.js'
 import { scanCompiledFeatures } from './features.js'
+import { collectCoreCalls, missingCoreSymbols } from './core-contract.js'
 
 // Pool global partagé entre tous les Bundlers du process (process-wide).
 // Évite de créer/terminer un pool par instance — coût d'init non négligeable
@@ -607,6 +608,11 @@ interface CacheEntry {
    * `this.pendingFeatures` sur un cache-hit — jumeau de usedAnimations : sans réinjection, un
    * composant inchangé disparaîtrait de `collectUsedFeatures()` au rebuild incrémental. */
   features?: string[]
+  /** symboles du CONTRAT appelés par CE fichier (collectCoreCalls, core-contract.ts), hydratés
+   * dans `this.pendingCoreCalls` sur un cache-hit — jumeau exact de features ci-dessus. Sans
+   * réinjection, un composant inchangé cesserait de réclamer ce qu'il appelle : la garde de
+   * bundleRuntime() ne verrait plus son besoin, et laisserait passer le cœur amputé qui le tue. */
+  coreCalls?: string[]
   /** mode 'bundle' SEULEMENT (jamais rempli en mode 'split', où l'unité vit sur disque et
    * `hashedPath` suffit à la relire) : code JS minifié final de CE fichier (repères déjà
    * résolus en spécificateurs virtuels 'mjs:...') et sa carte de source, gardés en RAM —
@@ -1152,6 +1158,11 @@ export class Bundler {
    * tour, fraîches ET cache-hit (jumeau de usedAnimations) — alimente collectUsedFeatures().
    * Remis à zéro à chaque compile(). */
   private pendingFeatures: Set<string> = new Set()
+  /** union des symboles du CONTRAT (collectCoreCalls, core-contract.ts) appelés par toutes les
+   * unités de CE tour, fraîches ET cache-hit — jumeau EXACT de pendingFeatures ci-dessus, même
+   * rythme de remise à zéro, mêmes points d'alimentation. Consommé par bundleRuntime(), qui
+   * REFUSE de finir un cœur auquel il manque un de ces symboles (cf. son bandeau). */
+  private pendingCoreCalls: Set<string> = new Set()
   /** Minifications DIFFÉRÉES : `compileMjsCold`/`compileScriptModuleCold`/
    * `prepareExternalManifest` transpilent et résolvent en PARALLÈLE (workers), mais
    * n'appellent PAS `minifyJs` tout de suite — ils pousseraient sinon plusieurs
@@ -1828,6 +1839,7 @@ export class Bundler {
     this.pendingUnits = new Map()
     this.bundleVirtualSources = new Map()
     this.pendingFeatures = new Set()
+    this.pendingCoreCalls = new Set()
     this.pendingMinifyTasks = []
     this.coreHashedPath = ''
 
@@ -3553,6 +3565,25 @@ export class Bundler {
     const concatenated = this.shouldMinify()
       ? parts.join('\n').replace(/(?<![\w$.])µ\.debug(?![\w$])(?!\s*=[^=])/g, 'MJS_DEBUG')
       : parts.join('\n')
+    // GARDE DU CONTRAT — dernier mot avant que ce cœur parte sur disque : chaque symbole interne
+    // que les unités de ce build APPELLENT doit exister dans le texte qu'on vient d'assembler.
+    // Sur `concatenated`, donc AVANT minification, pour la raison de toujours : le minifieur
+    // raccourcit les `_mjs_*`/`_upd*` et les rendrait invisibles des deux côtés.
+    //
+    // Ce que ça rattrape : la sélection ci-dessus repose sur `scanCompiledFeatures`, qui reconnaît
+    // un module à un marqueur DANS le code compilé. Un marqueur qui cesse de correspondre (un
+    // renommage interne, comme `._updList(` → `._mjs_updList(` en septembre 2026) rend « personne
+    // n'en a besoin » — mot pour mot ce que rend « rien à embarquer ». Le module sort du cœur, le
+    // build reste vert, et l'application meurt au premier clic. Neuf vues y sont restées deux
+    // jours. On ne détecte pas l'erreur de scan (impossible depuis le scan lui-même) : on
+    // vérifie le RÉSULTAT, et on refuse de finir.
+    //
+    // `pendingCoreCalls` est vide hors pipeline complet (bundleRuntime appelée seule, API directe
+    // ou tests) : rien de réclamé, rien à vérifier, comportement historique intact.
+    const manquants = missingCoreSymbols(concatenated, this.pendingCoreCalls)
+    if (manquants.length > 0) {
+      throw new Error(t('bundler.index.contrat-coeur-rompu', { manquants: manquants.join(', '), nb: manquants.length, modules: orderedFiles.length }))
+    }
     const minified = await minifyJs(concatenated, {
       force: this.shouldMinify(),
       filename: 'mjs_core.js',
@@ -3906,6 +3937,8 @@ export class Bundler {
         // collectUsedFeatures() — sinon un composant inchangé disparaîtrait des briques du
         // cœur détectées au rebuild incrémental.
         for (const f of cached.features ?? []) this.pendingFeatures.add(f)
+        // symboles du CONTRAT : même hygiène, même raison (cf. CacheEntry.coreCalls).
+        for (const c of cached.coreCalls ?? []) this.pendingCoreCalls.add(c)
         // registre des variables de thème — même hygiène : un composant en cache hit doit
         // rester compté dans computeVarRegistry(), sinon ses variables $$ (déclarées OU
         // lus) disparaîtraient du registre à chaque fichier NON touché par ce compile.
@@ -4144,6 +4177,10 @@ export class Bundler {
     // ne s'y trouve). Alimente collectUsedFeatures() en phase B de compile().
     const features = [...scanCompiledFeatures(withSplitCss, data)]
     for (const f of features) this.pendingFeatures.add(f)
+    // symboles du CONTRAT appelés par cette unité (core-contract.ts) — même texte, même moment,
+    // mêmes raisons que les signaux ci-dessus : non minifié, après résolution des assets.
+    const coreCalls = [...collectCoreCalls(withSplitCss)]
+    for (const c of coreCalls) this.pendingCoreCalls.add(c)
     // `deps` = stems dont ce code contient le repère (cœur, feuilles split, AUTRES unités
     // @import/µasset-ées) — calculé sur le code NON MINIFIÉ : un repère est un CHEMIN
     // LITTÉRAL dans un import, jamais touché par le mangling (qui ne renomme que des
@@ -4233,6 +4270,7 @@ export class Bundler {
             tagRefs: (data.tagRefs ?? []).map(r => ({ name: r.name, kind: r.kind, layoutLiteral: r.layoutLiteral })),
             componentDeps: [...(data.componentDeps ?? [])],
             reservedNames,
+            coreCalls,
             // lue ICI, au moment où ce code vient d'être minifié (cf. CacheEntry.mangleGen)
             mangleGen: this.mangleGeneration,
           },
@@ -4576,6 +4614,8 @@ export class Bundler {
         for (const a of cached.definedAnimations ?? []) this.definedAnimations.add(a)
         // signaux compilés : même hygiène que usedAnimations (cf. _compileMjsInner).
         for (const f of cached.features ?? []) this.pendingFeatures.add(f)
+        // symboles du CONTRAT : même hygiène (cf. CacheEntry.coreCalls).
+        for (const c of cached.coreCalls ?? []) this.pendingCoreCalls.add(c)
         // PLUS de `emittedThisCompile.add`/`cacheHitsThisCompile++` ICI : confirmé ou
         // invalidé seulement en phase C (cf. _compileMjsInner, même raisonnement). Rend le
         // REPÈRE, jamais le chemin final.
@@ -4706,6 +4746,9 @@ export class Bundler {
     // compileMjsCold : le minifieur mangle les symboles `_mjs_*`/`_upd*`).
     const features = [...scanCompiledFeatures(withImport)]
     for (const f of features) this.pendingFeatures.add(f)
+    // symboles du CONTRAT — jumeau de compileMjsCold (cf. core-contract.ts).
+    const coreCalls = [...collectCoreCalls(withImport)]
+    for (const c of coreCalls) this.pendingCoreCalls.add(c)
     // `deps` sur le code NON MINIFIÉ (cf. bandeau jumeau de compileMjsCold : un repère est
     // un chemin littéral, jamais touché par le mangling) — pas besoin d'attendre la
     // minification différée plus bas.
@@ -4749,6 +4792,7 @@ export class Bundler {
             definedAnimations: fileDefinedAnims,
             importedModules: transitiveImportedModules,
             reservedNames,
+            coreCalls,
             mangleGen: this.mangleGeneration,
           },
         })
@@ -6117,6 +6161,9 @@ export class Bundler {
     const concatenated = [header, ...buffer].join('\n')
     const features = [...scanCompiledFeatures(concatenated)]
     for (const f of features) this.pendingFeatures.add(f)
+    // symboles du CONTRAT — jumeau de compileMjsCold (cf. core-contract.ts). Le manifeste externe
+    // n'a pas d'entrée de cache : rien à réinjecter ailleurs, il est reconstruit à chaque tour.
+    for (const c of collectCoreCalls(concatenated)) this.pendingCoreCalls.add(c)
     // sur le code NON MINIFIÉ (cf. bandeau de compileMjsCold) — pas besoin d'attendre la
     // minification différée plus bas.
     const deps = this.extractPlaceholderDeps(concatenated)

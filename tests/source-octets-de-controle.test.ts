@@ -26,8 +26,11 @@ import { mjsTmp } from './helpers/tmp.js'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const RACINE    = join(__dirname, '..')
 
-// généré, vendu, ou cache : rien de tout ça n'est une source qu'on relit
-const IGNORE   = new Set([ 'node_modules', 'dist', '.git', '.sass-cache', 'coverage', 'public', 'app' ])
+// généré, vendu, cache, ou outillage local : rien de tout ça n'est une source qu'on relit.
+// `.git-public` est un second dépôt git (celui de la publication), `.claude` un dossier d'outils de
+// poste : aucun `grep` du transpileur n'y descend, et un poste peut parfaitement y poser des
+// fichiers illisibles ou qu'on n'a pas le droit de lire — un test vert ne doit pas en dépendre
+const IGNORE   = new Set([ 'node_modules', 'dist', '.git', '.git-public', '.claude', '.sass-cache', 'coverage', 'public', 'app' ])
 // binaires LÉGITIMES — ils portent des octets de contrôle par nature, et personne ne les grep
 const BINAIRES = new Set([ '.wasm', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.otf', '.eot', '.mp3', '.mp4', '.webm', '.ogg', '.wav', '.pdf', '.zip', '.gz', '.tgz', '.br', '.node' ])
 

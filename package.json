@@ -1,6 +1,6 @@
 {
   "name": "@matrixfr/mjs-framework",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "ModularJS (MJS) — framework front compile-time : réactivité résolue à la compilation (sans Proxy au runtime), Custom Elements + Shadow DOM, syntaxe .mjs (Civet par défaut). Compilateur + runtime + CLI dev/HMR.",
   "license": "MIT",
   "author": "Matrix",
