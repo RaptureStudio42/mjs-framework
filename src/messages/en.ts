@@ -45,7 +45,12 @@ Options:
   --dev           Force a DEVELOPMENT build (inspection panel, no minification)
   --prod          Force a PRODUCTION build (minified, hashed i18n, no dev tooling)
                   With neither: the 'env' key of mjs.config.json, otherwise NODE_ENV.
+  -v, --version   Print the mjs version and exit
+  -h, --help      Print this help and exit
 `,
+  // same output as fr on purpose: a script parsing `mjs --version` must not depend on the language
+  'cli.version': ({ version }: MsgVars) => `mjs ${version}`,
+  'cli.version-illisible': `❌ Version not found: the mjs package.json is unreadable or has no "version" field.`,
   'cli.port-invalide': ({ valeur }: MsgVars) => `⚠️  --port ignored: "${valeur}" is not a valid number (default kept).`,
   'cli.flag-inconnu': ({ arg }: MsgVars) => `⚠️  Unknown flag ignored: "${arg}" (check the spelling — see 'mjs --help').`,
   'cli.argument-non-reconnu': ({ arg }: MsgVars) => `⚠️  Unrecognized argument ignored: "${arg}" (misspelled command? see 'mjs --help').`,

@@ -104,6 +104,7 @@ Le rendu piloté par la config (`render`, SSR, prérendu) est détaillé au chap
 | `--once` | force la commande sur `build` (compile et sort) |
 | `--dev` | build de **développement** — panneau d'inspection embarqué, pas de minification, cartes de source (c'est le défaut) |
 | `--prod` | build de **production** — minifié, fragments i18n hachés, aucun outil de développement |
+| `-v`, `--version` | affiche la version du paquet mjs (`mjs <version>`) et sort — répond depuis n'importe quel dossier, sans config ni projet |
 | `-h`, `--help` | affiche l'aide et sort |
 
 `mjs build`, `mjs check`, `mjs dev` et `mjs serve` annoncent en clair le mode retenu et d'où il vient — c'est cette ligne qu'on relit dans un journal de déploiement pour vérifier qu'on a bien construit ce qu'on croit.

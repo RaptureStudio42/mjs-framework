@@ -26,6 +26,17 @@ function fmtBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
 
+// version du paquet mjs LUI-MÊME, lue au runtime dans son package.json — `../package.json` vaut
+// depuis les DEUX entrées possibles : `src/cli.ts` (dev, lancé par tsx) et `dist/cli.js` (build
+// esbuild, `--format=esm` préserve `import.meta.url`). Pas d'import statique du JSON : esbuild le
+// figerait dans le bundle, et un `npm version` sans `build:self` annoncerait l'ancien numéro
+function readPackageVersion(): string | null {
+  try {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'))
+    return typeof pkg.version === 'string' && pkg.version !== '' ? pkg.version : null
+  } catch { return null }
+}
+
 // hasComponents — y a-t-il au moins un `.mjs` sous `dir` ? Sert à la seule garde du build :
 // aucun composant veut dire qu'il n'y a RIEN à construire, et un build qui n'a rien construit
 // ne doit pas écrire un manifeste vide par-dessus celui d'un site en place.
@@ -192,6 +203,8 @@ interface Args {
   host?: string
   entry?: string
   help?: boolean
+  /** `-v`/`--version` : imprime la version du paquet mjs et sort */
+  version?: boolean
   /** `--dev`/`--prod` : l'environnement du build. Absent ⇒ développement. */
   env?: 'dev' | 'prod'
 }
@@ -241,6 +254,8 @@ function parseArgs(argv: string[]): Args {
       args.env = 'prod'
     } else if (a === '-h' || a === '--help') {
       args.help = true
+    } else if (a === '-v' || a === '--version') {
+      args.version = true
     } else {
       // Tout argument non reconnu
       // (flag inconnu type `--minify`/`--otuput` typo, ou mot-clé de
@@ -262,6 +277,18 @@ function parseArgs(argv: string[]): Args {
 
 async function run(argv: string[]): Promise<void> {
   const args = parseArgs(argv)
+  // `-v`/`--version` répond AVANT tout le reste — ni chdir, ni lecture de config, ni Bundler :
+  // c'est la première commande que tape un inconnu, elle doit marcher depuis n'importe quel
+  // dossier, y compris vide. Version ILLISIBLE = échec dit et code 1, jamais un numéro inventé
+  if (args.version) {
+    const version = readPackageVersion()
+    if (version === null) {
+      console.error(t('cli.version-illisible'))
+      process.exit(1)
+    }
+    console.log(t('cli.version', { version }))
+    process.exit(0)
+  }
   if (args.help) {
     console.log(USAGE)
     process.exit(0)

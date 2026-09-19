@@ -1,6 +1,6 @@
 {
-  "name": "mjs-framework",
-  "version": "2.4.0",
+  "name": "@matrixfr/mjs-framework",
+  "version": "2.4.1",
   "description": "ModularJS (MJS) — framework front compile-time : réactivité résolue à la compilation (sans Proxy au runtime), Custom Elements + Shadow DOM, syntaxe .mjs (Civet par défaut). Compilateur + runtime + CLI dev/HMR.",
   "license": "MIT",
   "author": "Matrix",
@@ -17,7 +17,7 @@
     "mjs",
     "modularjs"
   ],
-  "homepage": "https://modularjs.rapturestudio.fr",
+  "homepage": "https://mjs.rapturestudio.fr",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/RaptureStudio42/mjs-framework.git"
