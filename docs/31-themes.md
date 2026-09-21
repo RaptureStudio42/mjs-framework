@@ -344,6 +344,18 @@ Le registre est calculé **au build** et déposé à côté des fichiers émis (
 
 À quoi ça sert : voir d'un coup d'œil ce que le projet expose comme variables, retrouver qui déclare une couleur qu'on n'arrive pas à situer, et repérer une variable déclarée deux fois ou plus sans jamais être lue.
 
+## Changer une couleur en direct
+
+Quand l'atelier est servi par `mjs dev`, chaque variable dont la valeur est une couleur convertible en hexadécimal porte un sélecteur de couleur. Choisir une teinte la pousse immédiatement à **toutes les pages ouvertes du projet** : pas de recompilation, pas de rechargement, pas de remplacement de feuille de style. La variable voyage sur le WebSocket du rechargement à chaud, par un canal distinct nommé `theme-vars`, qui ne transporte que des variables. Un témoin en tête de page indique si ce canal est vivant et combien de pages écoutent ; sans serveur de développement, l'atelier reste en lecture seule.
+
+Tant que l'interrupteur **Enregistrer dans le source** est au repos, rien n'atteint le disque : fermer l'onglet remet tout en place, et le bouton « Rétablir » rend à chaque variable sa valeur compilée.
+
+Armé, l'interrupteur envoie chaque couleur choisie dans le fichier qui la déclare, à la ligne exacte : seule la tranche de la valeur est réécrite, l'indentation, le commentaire de fin de ligne et le reste du fichier étant recollés octet pour octet. Attention, « Rétablir » ne défait alors que l'aperçu — ce qui est écrit reste écrit. Quand une variable porte plusieurs déclarations (un thème clair et un thème sombre, par exemple), l'écriture vise la **première déclaration qui n'appartient pas au framework** ; déplier la ligne affiche la cible, fichier et numéro de ligne, avant d'écrire.
+
+> ⚠️ Outil de développement, verrouillé de trois façons : la route d'écriture répond 404 dès que le serveur tourne en production, 403 quand la requête ne vient pas d'une origine locale, et la valeur passe un crible en **liste blanche de formes** : un hexadécimal de 3 à 8 chiffres, l'une des douze fonctions de couleur CSS (`rgb`, `rgba`, `hsl`, `hsla`, `hwb`, `lab`, `lch`, `oklab`, `oklch`, `color`, `color-mix`, `var`) avec des arguments d'un jeu de caractères restreint, ou un mot-clé d'un seul mot — 64 signes au plus. Ce qui n'entre dans aucune de ces trois formes est refusé, `url(…)` le premier : ce n'est pas une couleur, et une variable qui sert d'image de fond en ferait une requête réseau.
+
+Une écriture qui n'aboutit pas le dit, avec son motif, à côté de la variable : déclaration introuvable dans le fichier, ligne indécidable, fichier hors du projet ou lien symbolique, valeur ou nom refusés par le crible. Jamais de silence.
+
 ## Aide-mémoire
 
 | Écriture | Où | Effet |

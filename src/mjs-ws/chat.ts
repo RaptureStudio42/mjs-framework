@@ -5,7 +5,7 @@
 // pour la diffusion, la présence ET le rejeu d'historique (room().history, cf. rooms.ts + docs/
 // 23-mjs-ws.md §4.1 — l'épine dorsale de ce paquet, RIEN de réinventé côté salons).
 //
-//   import { mjsWs, chatPackage } from 'mjs-framework/ws'
+//   import { mjsWs, chatPackage } from 'modularjs-framework/ws'
 //   app = mjsWs({ auth: ... })
 //   app.use(chatPackage({ moderators: (identity) => (identity as any)?.role === 'admin' }))
 //   await app.listen()

@@ -1,0 +1,6 @@
+{
+  "sourceDir": "composants",
+  "outputDir": "sortie",
+  "manifestPath": "sortie/bundle.js",
+  "defaultScriptLang": "civet"
+}

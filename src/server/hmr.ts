@@ -18,12 +18,17 @@ import type { CssOnlyPayload } from '../bundler/index.js'
 import { t } from '../messages/index.js'
 
 export interface HMRMessage {
-  type: 'reload' | 'css-update' | 'connected' | 'error'
+  type: 'reload' | 'css-update' | 'connected' | 'error' | 'theme-vars'
   modules?: string[]
   message?: string
   /** Charge d'un `css-update` : CSS frais par composant/feuille
    * (cf. CssOnlyPayload, bundler). Consommée côté page par `µ._hotCss`. */
   css?: CssOnlyPayload
+  /** Charge d'un `theme-vars` (atelier /__mjs/theme) : custom properties PRÉFIXÉES
+   * (`--mjs-accent`) → valeur. Le préfixe est appliqué par l'émetteur, qui seul
+   * connaît `varPrefix` — le client pose les clés telles quelles. Valeur vide
+   * (`''`) = retrait de la surcharge, retour à la valeur du source. */
+  themeVars?: Record<string, string>
 }
 
 // Ni ce serveur WebSocket HMR
@@ -89,6 +94,25 @@ export class HMRServer {
     this.broadcast({ type: 'error', message })
   }
 
+  // Aperçu de thème en direct (atelier /__mjs/theme) : l'atelier POSTe une
+  // couleur, toutes les pages ouvertes la posent SANS recharger et SANS rien
+  // écrire sur le disque. Canal DISTINCT de 'css-update' à dessein — ce
+  // dernier passe par `µ._hotCss` et retombe sur `location.reload()` au
+  // moindre doute, ce qui détruirait l'aperçu instantané (et l'état de la
+  // page avec). Ici le repli est l'inverse : au moindre doute, on ne fait
+  // RIEN. Une surcharge d'aperçu n'est jamais un état à sauver.
+  notifyThemeVars(themeVars: Record<string, string>): void {
+    this.broadcast({ type: 'theme-vars', themeVars })
+  }
+
+  /** Pages actuellement à l'écoute — l'atelier l'affiche pour que « rien ne
+   *  bouge » se distingue de « aucune page ouverte ». */
+  get clientCount(): number {
+    let n = 0
+    for (const ws of this.clients) if (ws.readyState === WebSocket.OPEN) n++
+    return n
+  }
+
   close(): void {
     for (const ws of this.clients) ws.close()
     this.wss.close()
@@ -127,6 +151,43 @@ export const hmrClientSnippet = (wsUrl: string) => `
 (() => {
   const OVERLAY_ID = '__mjs_hmr_overlay'
   const STYLE_ID = '__mjs_hmr_style'
+
+  // Aperçu de thème (atelier /__mjs/theme) — feuille de SURCHARGE, adoptée
+  // APRÈS toutes les autres et jamais remplie au boot. Elle vit ICI, dans le
+  // snippet HMR, et non dans \`mjs_theme.ts\` : le runtime de thème est
+  // DÉTECTÉ au build (cf. bundler resolveRuntimeFiles/wantsTheme), donc
+  // absent d'un projet qui n'en déclenche aucun critère — l'aperçu, lui, doit
+  // marcher sur toute page servie par \`mjs dev\`, avec ou sans cœur µ.
+  // Surcharge et non remplacement : le CSS d'origine reste intact dessous,
+  // et retirer une entrée suffit à revenir à la valeur du source.
+  const themeEdits = new Map()
+  let themeSheet = null
+
+  const applyThemeVars = (vars) => {
+    if (!vars) return
+    for (const [name, value] of Object.entries(vars)) {
+      // '' = retrait explicite, pas une couleur vide
+      if (value === '') themeEdits.delete(name)
+      else themeEdits.set(name, value)
+    }
+    // \`CSSStyleSheet\` constructible : absent des vieux navigateurs et de
+    // certains contextes non sécurisés. Sans elle on ne fait RIEN (l'aperçu
+    // est un confort, pas un état à sauver) plutôt que de recharger la page.
+    try {
+      if (!themeSheet) {
+        themeSheet = new CSSStyleSheet()
+        document.adoptedStyleSheets = [...document.adoptedStyleSheets, themeSheet]
+      }
+      // \`:root\` nu, sans \`:where()\` : cette feuille doit GAGNER sur les
+      // déclarations du source, y compris celles d'un jeu clair/sombre porté
+      // par un attribut (cf. mjs_theme.ts, spécificité 0 par \`:where()\`).
+      // Les custom properties traversent les frontières shadow par héritage :
+      // une seule pose sur la racine suffit à toucher tout l'arbre.
+      let corps = ''
+      for (const [name, value] of themeEdits) corps += name + ':' + value + ';'
+      themeSheet.replaceSync(corps ? ':root{' + corps + '}' : '')
+    } catch {}
+  }
 
   const ensureStyle = () => {
     if (document.getElementById(STYLE_ID)) return
@@ -200,6 +261,7 @@ export const hmrClientSnippet = (wsUrl: string) => `
             link.href = u.toString()
           }
         }
+        if (msg.type === 'theme-vars')  { applyThemeVars(msg.themeVars) }
         if (msg.type === 'error')       { showError(msg.message || ${JSON.stringify(t('server.hmr-aucun-message'))}) }
       } catch {}
     })

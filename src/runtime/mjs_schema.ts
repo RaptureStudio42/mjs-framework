@@ -23,7 +23,7 @@
 //
 //   µ.schema('pos', { x: 'i16', y: 'i16' })        # déclare/complète le registre CLIENT — UN SEUL
 //                                                     par appli, jamais par socket (µ._mjs_mjschemaRegistre)
-//   µ.list('str8') / µ.bits(['vivant', 'vip'])      # mêmes helpers que côté serveur (mjs-framework/ws)
+//   µ.list('str8') / µ.bits(['vivant', 'vip'])      # mêmes helpers que côté serveur (modularjs-framework/ws)
 //   sock = µ.socket(url)                             # hello porte schemaHash si un registre existe
 //   sock.send('pos', { x: 1, y: 2 })                 # binaire AUTOMATIQUE si 'pos' a un schéma déclaré
 //   sock.on('pos', (p) -> …)                          # AUCUNE différence, binaire ou JSON — invisible
@@ -345,7 +345,7 @@ function mjschemaChargerDefinitions(json) {
   return mjschemaDefSchema(µ._mjs_mjschemaRegistre, nom, champs);
 };
 
-/** mêmes helpers que `import { list, bits } from 'mjs-framework/ws'` côté serveur — cf. docs/23-mjs-ws.md
+/** mêmes helpers que `import { list, bits } from 'modularjs-framework/ws'` côté serveur — cf. docs/23-mjs-ws.md
  *  §3.1 pour le vocabulaire complet des types de champ. */
 µ.list = function(of) { return { kind: 'list', of: of }; };
 µ.bits = function(noms) { return { kind: 'bits', noms: noms }; };

@@ -35,7 +35,7 @@
 // WEBHOOK_RETRY_DELAYS_MS) : 3 tentatives puis abandon + warn, JAMAIS bloquant — la partie continue
 // en mémoire (le prochain save() rattrapera l'état dès qu'il repasse, aucune action requise).
 //
-//   import { mjsServer, BridgePersistAdapter } from 'mjs-framework/mjs-server'
+//   import { mjsServer, BridgePersistAdapter } from 'modularjs-framework/mjs-server'
 //   app = mjsServer({ persist: new BridgePersistAdapter({ url: 'https://back/mjs-server/persist', secret: 'xyz' }) })
 
 import { request as httpRequest } from 'node:http'

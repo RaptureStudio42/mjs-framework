@@ -9,6 +9,7 @@
   $placeholder       = 'Choisir…'
   $searchPlaceholder = 'Rechercher…'
   $emptyLabel        = 'Aucun résultat'
+  $match             = 'contains'
 
   $iconChecked   = '✔'
   $iconUnchecked = ''
@@ -33,11 +34,26 @@
   searchOnOf = (search)-> search !== undefined and search !== false
   normalize  = (s)-> (s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-  filterFn = (query, search, options)->
+  # sous-suite : chaque lettre de q, dans l'ordre, avec des trous permis
+  subsequence = (label, q)->
+    j = 0
+    for ch in label
+      j++ if j < q.length and ch == q[j]
+    j == q.length
+
+  matchers = {
+    contains:       (label, q)-> label.includes(q)
+    starts:         (label, q)-> label.startsWith(q)
+    fuzzy:          (label, q)-> subsequence(label, q)
+    'starts-fuzzy': (label, q)-> label[0] == q[0] and subsequence(label.slice(1), q.slice(1))
+  }
+
+  filterFn = (query, search, match, options)->
     return options unless searchOnOf(search)
-    q = query.trim()
+    q = normalize(query.trim())
     return options unless q
-    options.filter (o)-> normalize(o.label).includes(normalize(q))
+    test = matchers[match] or matchers.contains
+    options.filter (o)-> test(normalize(o.label), q)
 
   isSelected = (v, value, multiple)->
     if multiOf(multiple) then Array.isArray(value) and value.includes(v) else value == v
@@ -54,18 +70,18 @@
     sel = selectedOf(value, multiple, options)
     if sel.length then sel[0].icon else null
 
-  activeDescendantFn = (open, activeIndex, query, search, options)->
+  activeDescendantFn = (open, activeIndex, query, search, match, options)->
     return undefined unless open
-    opt = filterFn(query, search, options)[activeIndex]
+    opt = filterFn(query, search, match, options)[activeIndex]
     return undefined unless opt
     optionId(activeIndex)
 
   $searchOn         = searchOnOf($search)
   $multi            = multiOf($multiple)
-  $filtered         = filterFn($query, $search, $optionsData)
+  $filtered         = filterFn($query, $search, $match, $optionsData)
   $currentLabel     = labelFn($value, $multiple, $optionsData, $placeholder)
   $currentIcon      = iconFn($value, $multiple, $optionsData)
-  $activeDescendant = activeDescendantFn($open, $activeIndex, $query, $search, $optionsData)
+  $activeDescendant = activeDescendantFn($open, $activeIndex, $query, $search, $match, $optionsData)
 
   refreshOptions = ->
     return unless slotRef
@@ -109,7 +125,7 @@
     if $open then closePanel() else openPanel()
 
   onSearchInput = ->
-    $activeIndex = (if filterFn($query, $search, $optionsData).length then 0 else -1)
+    $activeIndex = (if filterFn($query, $search, $match, $optionsData).length then 0 else -1)
 
   onKeydown = (e)->
     unless $open

@@ -1,5 +1,5 @@
 // SMOKE navigateur RÉEL (Chromium + Firefox, via playwright, PAS @playwright/test) sur
-// les 5 modules cœur (select/field/checkbox/radio/switch) et @title. Hors de `npm test` : ce
+// les 6 modules cœur (select/field/checkbox/radio/switch/code) et @title. Hors de `npm test` : ce
 // fichier porte l'extension `.mts`, que le glob de npm test (`mocha --recursive tests/
 // --extension ts`, cf. package.json) ne reconnaît PAS (`hasMatchingExtname` exige un suffixe
 // littéral ".ts", que ".mts" n'a pas — vérifié par lecture de mocha/lib/cli/lookup-files.js :
@@ -32,6 +32,7 @@ const OUT_DIR        = join(FIXTURE_DIR, 'sortie')
 const BIN_MJS        = join(MODULARJS_ROOT, 'bin', 'mjs')
 
 const HMR_PREFIX = '[HMR]' // bruit LÉGITIME du serveur dev (server/hmr.ts) — jamais une erreur applicative
+const INFO_TYPES = new Set(['log', 'info', 'debug']) // niveaux d'information : ignorés ; warning/error/pageerror restent bloquants
 
 const TITLE_DELETE = 'Supprime définitivement cette ligne'
 const TITLE_SUBMIT = 'Valide le formulaire'
@@ -81,7 +82,7 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
   }
 }
 
-const CORE_TAGS = ['mjs-select', 'mjs-field', 'mjs-checkbox', 'mjs-radio', 'mjs-switch']
+const CORE_TAGS = ['mjs-select', 'mjs-field', 'mjs-checkbox', 'mjs-radio', 'mjs-switch', 'mjs-code']
 
 // bordure calculée de l'input email de mjs-field (démo `email`), comparée à une sonde
 // qui lit la MÊME variable CSS depuis le MÊME point d'héritage (enfant de <mjs-field>, comme
@@ -153,6 +154,10 @@ describe('smoke navigateur réel (Chromium + Firefox) : modules cœur + @title',
         page.on('console', (msg: any) => {
           const text = msg.text()
           if (text.startsWith(HMR_PREFIX)) return
+          // notes d'information du moteur (logLevel dev = 'log' : « Downloading… », « Module
+          // instantiated… ») : du bavardage voulu en dev, jamais un défaut — seuls les
+          // avertissements et les erreurs comptent (un `warn` reste ROUGE)
+          if (INFO_TYPES.has(msg.type())) return
           consoleIssues.push(`console.${msg.type()}: ${text}`)
         })
         page.on('pageerror', (err: any) => { consoleIssues.push(`pageerror: ${err.message}`) })
@@ -169,7 +174,7 @@ describe('smoke navigateur réel (Chromium + Firefox) : modules cœur + @title',
         await browser?.close()
       })
 
-      it('les 5 modules cœur sont montés (customElements.get + shadow présent)', async function () {
+      it('les 6 modules cœur sont montés (customElements.get + shadow présent)', async function () {
         const result = await page.evaluate((tags: string[]) => {
           const defined = tags.every((t) => !!customElements.get(t))
           const d: any = document.querySelector('mjs-demo')
@@ -180,7 +185,7 @@ describe('smoke navigateur réel (Chromium + Firefox) : modules cœur + @title',
           return { defined, shadows, hasDemoShadow: !!(d && d._shadow) }
         }, CORE_TAGS)
         assert.equal(result.hasDemoShadow, true, 'le composant démo doit lui-même exposer un shadow root')
-        assert.equal(result.defined, true, 'customElements.get doit être défini pour les 5 tags mjs-*')
+        assert.equal(result.defined, true, 'customElements.get doit être défini pour les 6 tags mjs-*')
         assert.equal(result.shadows, true, 'chaque module cœur doit exposer son propre shadow root (_shadow)')
       })
 
@@ -461,7 +466,99 @@ describe('smoke navigateur réel (Chromium + Firefox) : modules cœur + @title',
         }, TITLE_SUBMIT, { timeout: 3000 })
       })
 
-      it('zéro bruit console sur toute la session (hors HMR filtré)', function () {
+      it('CODE — bouton collant dans l\'angle du bloc, suit le défilement de la boîte, clic réel pose la classe ok', async function () {
+        const atRest = await page.evaluate(() => {
+          const host: any = document.querySelector('mjs-demo')._shadow.querySelector('mjs-code')
+          const pre = host.querySelector('pre')
+          const btn = host._shadow.querySelector('button.copy')
+          const preRect = pre.getBoundingClientRect()
+          const btnRect = btn.getBoundingClientRect()
+          return { topGap: btnRect.top - preRect.top, rightGap: preRect.right - btnRect.right }
+        })
+        assert.ok(atRest.topGap >= 0 && atRest.topGap <= 8, `au repos, le bouton doit être à ≤ 8px sous le haut du <pre> (mesuré ${atRest.topGap}px)`)
+        assert.ok(atRest.rightGap >= 0 && atRest.rightGap <= 8, `au repos, le bouton doit être à ≤ 8px du bord droit du <pre> (mesuré ${atRest.rightGap}px)`)
+
+        await page.evaluate(() => {
+          const box: any = document.querySelector('mjs-demo')._shadow.querySelector('.code-box')
+          box.scrollTop = 300
+        })
+        await page.waitForFunction(() => {
+          const box: any = document.querySelector('mjs-demo')._shadow.querySelector('.code-box')
+          return box.scrollTop >= 300
+        }, null, { timeout: 3000 })
+
+        const scrolled = await page.evaluate(() => {
+          const box: any = document.querySelector('mjs-demo')._shadow.querySelector('.code-box')
+          const host: any = document.querySelector('mjs-demo')._shadow.querySelector('mjs-code')
+          const btn = host._shadow.querySelector('button.copy')
+          const boxRect = box.getBoundingClientRect()
+          const btnRect = btn.getBoundingClientRect()
+          return { withinTop: btnRect.top - boxRect.top }
+        })
+        assert.ok(scrolled.withinTop >= 0 && scrolled.withinTop <= 30, `après scrollTop=300, le bouton doit rester visible dans la boîte (haut à ${scrolled.withinTop}px du haut de la boîte, attendu 0-30px)`)
+
+        await page.evaluate(() => {
+          document.querySelector('mjs-demo')._shadow.querySelector('.code-box').scrollIntoView({ block: 'center' })
+        })
+        const point = await page.evaluate(() => {
+          const host: any = document.querySelector('mjs-demo')._shadow.querySelector('mjs-code')
+          const btn = host._shadow.querySelector('button.copy')
+          const r = btn.getBoundingClientRect()
+          return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+        })
+        await page.mouse.click(point.x, point.y)
+        await page.waitForFunction(() => {
+          const host: any = document.querySelector('mjs-demo')._shadow.querySelector('mjs-code')
+          const btn = host._shadow.querySelector('button.copy')
+          return btn.classList.contains('ok')
+        }, null, { timeout: 3000 })
+      })
+
+      it('CODE forme courte — <@code>texte</@code> : le module pose lui-même le cadre, bouton dans l\'angle, clic réel', async function () {
+        const shape = await page.evaluate(() => {
+          const wrap: any = document.querySelector('mjs-demo')._shadow.querySelector('.code-short')
+          const host: any = wrap.querySelector('mjs-code')
+          const box = host._shadow.querySelector('pre.box')
+          const btn = host._shadow.querySelector('button.copy')
+          const cs = getComputedStyle(box)
+          const boxRect = box.getBoundingClientRect()
+          const btnRect = btn.getBoundingClientRect()
+          return {
+            lightPre:  !!host.querySelector('pre'),
+            hasBlock:  box.classList.contains('block'),
+            bg:        cs.backgroundColor,
+            mono:      /mono|Menlo|Consolas/i.test(cs.fontFamily),
+            pre:       cs.whiteSpace,
+            topGap:    btnRect.top - boxRect.top,
+            rightGap:  boxRect.right - btnRect.right,
+            text:      host.textContent,
+          }
+        })
+        assert.equal(shape.lightPre, false, 'aucun <pre> à écrire côté appelant')
+        assert.equal(shape.hasBlock, true, 'sans <pre> projeté, l\'enveloppe du shadow passe en mode bloc')
+        assert.notEqual(shape.bg, 'rgba(0, 0, 0, 0)', `le mode bloc doit poser un fond (mesuré ${shape.bg})`)
+        assert.equal(shape.mono, true, 'fonte à chasse fixe en mode bloc')
+        assert.equal(shape.pre, 'pre', 'blancs préservés en mode bloc')
+        assert.equal(shape.text, 'npm install modularjs-framework', 'texte projeté intact')
+        assert.ok(shape.topGap >= 0 && shape.topGap <= 8, `bouton à ≤ 8px du haut du bloc (mesuré ${shape.topGap}px)`)
+        assert.ok(shape.rightGap >= 0 && shape.rightGap <= 8, `bouton à ≤ 8px du bord droit (mesuré ${shape.rightGap}px)`)
+
+        await page.evaluate(() => {
+          document.querySelector('mjs-demo')._shadow.querySelector('.code-short').scrollIntoView({ block: 'center' })
+        })
+        const point = await page.evaluate(() => {
+          const host: any = document.querySelector('mjs-demo')._shadow.querySelector('.code-short mjs-code')
+          const r = host._shadow.querySelector('button.copy').getBoundingClientRect()
+          return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+        })
+        await page.mouse.click(point.x, point.y)
+        await page.waitForFunction(() => {
+          const host: any = document.querySelector('mjs-demo')._shadow.querySelector('.code-short mjs-code')
+          return host._shadow.querySelector('button.copy').classList.contains('ok')
+        }, null, { timeout: 3000 })
+      })
+
+      it('zéro avertissement ni erreur console sur toute la session (HMR et niveaux log/info/debug filtrés)', function () {
         assert.equal(consoleIssues.length, 0, consoleIssues.join('\n'))
       })
     })

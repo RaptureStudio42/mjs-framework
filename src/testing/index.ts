@@ -8,7 +8,7 @@
 // Ce n'est PAS un lanceur de tests : il n'impose ni Mocha, ni Vitest, ni Jest. On
 // monte, on agit, on lit — l'assertion est celle de l'outil que l'auteur préfère.
 //
-//   import { createHarness } from 'mjs-framework/testing'
+//   import { createHarness } from 'modularjs-framework/testing'
 //
 //   const app     = await createHarness()          // lit mjs.config.json, compile une fois
 //   const counter = await app.mount('my-counter', { start: 3 })

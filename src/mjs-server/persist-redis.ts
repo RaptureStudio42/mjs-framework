@@ -31,7 +31,7 @@
 // serveur (process qui ne rend jamais la main, warnings de reconnexion en boucle vers un Redis dont
 // plus personne ne se sert). À signaler côté doc si ce comportement doit être documenté.
 //
-//   import { mjsServer, RedisPersistAdapter } from 'mjs-framework/mjs-server'
+//   import { mjsServer, RedisPersistAdapter } from 'modularjs-framework/mjs-server'
 //   app = mjsServer({ persist: new RedisPersistAdapter({ url: 'redis://localhost:6379', prefix: 'mjs-server:' }) })
 
 import { RedisConnection, parseRedisUrl, type RespValue } from '../mjs-ws/adapter-redis.js'

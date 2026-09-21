@@ -5,7 +5,7 @@
 ```ts
 // serveur — TypeScript classique (accountsPackage est une simple composition app.use(), comme
 // chatPackage — pas de dialecte Civet dédié ici)
-import { mjsWs, accountsPackage, accountsAuth } from 'mjs-framework/ws'
+import { mjsWs, accountsPackage, accountsAuth } from 'modularjs-framework/ws'
 
 const SECRET = process.env.MJS_COMPTES_SECRET!
 const app = mjsWs({ auth: accountsAuth(SECRET) })   // PAS jwtAuth(SECRET) nu — cf. §5
@@ -64,7 +64,7 @@ Une appli MJS-WS a tôt ou tard besoin d'une identité qui survit à une reconne
 
 ```ts
 // comptes.server.ts
-import { mjsWs, accountsPackage, accountsAuth } from 'mjs-framework/ws'
+import { mjsWs, accountsPackage, accountsAuth } from 'modularjs-framework/ws'
 
 const SECRET = process.env.MJS_COMPTES_SECRET!
 
@@ -198,8 +198,8 @@ app.use(accountsPackage({
 `hasRole(identity, role)` (exportée à côté de `accountsPackage`) lit `identity.roles` (le duck-type posé par le jeton) — utilisable par les hooks des **autres** paquets, par exemple pour brancher la modération du chat sur les rôles du compte :
 
 ```ts
-import { accountsPackage, hasRole } from 'mjs-framework/ws'
-import { chatPackage } from 'mjs-framework/ws'
+import { accountsPackage, hasRole } from 'modularjs-framework/ws'
+import { chatPackage } from 'modularjs-framework/ws'
 
 app.use(accountsPackage({ secret: SECRET, roles: (c) => c.meta.moderator ? ['moderator'] : [] }))
 app.use(chatPackage({ moderators: (identity) => hasRole(identity, 'moderator') }))

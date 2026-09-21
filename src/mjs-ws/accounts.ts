@@ -5,7 +5,7 @@
 // des comptes, se connecter, rester connectée — et que les AUTRES paquets (chat/jeu/lobby) reçoivent
 // une identité STABLE + des rôles.
 //
-//   import { mjsWs, accountsPackage, accountsAuth } from 'mjs-framework/ws'
+//   import { mjsWs, accountsPackage, accountsAuth } from 'modularjs-framework/ws'
 //   const SECRET = process.env.MJS_COMPTES_SECRET!
 //   app = mjsWs({ auth: accountsAuth(SECRET) })   // PAS jwtAuth(SECRET) nu — cf. « Élévation » ci-dessous
 //   app.use(accountsPackage({ secret: SECRET }))

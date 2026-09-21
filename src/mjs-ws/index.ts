@@ -10,7 +10,7 @@
 // tests). Module NODE-SEULEMENT — jamais chargé par le runtime navigateur
 // (hors src/runtime/, absent de orderedFiles du bundler).
 //
-//   import { mjsWs } from 'mjs-framework/ws'
+//   import { mjsWs } from 'modularjs-framework/ws'
 //
 //   app = mjsWs({
 //     auth:    (hello, meta) => hello.auth?.token === SECRET ? { id: 1, pseudo: 'Zora' } : false,
@@ -54,7 +54,7 @@ import type { MjsWsAdapter } from './adapter.js'
 // isLoopbackHost réexportée depuis bridge.ts (source UNIQUE, réutilisée par cli/ws.ts pour la bannière)
 // µschema — cf. mjs-ws/schema.ts (résolution ws.codec + schemas en masse),
 // src/schema/core.ts (registre pur, réexporté ICI pour l'ergonomie d'un fichier serveur :
-// `import { mjsWs, list, bits } from 'mjs-framework/ws'`)
+// `import { mjsWs, list, bits } from 'modularjs-framework/ws'`)
 import { resolveSchemaOptions } from './schema.js'
 import type { MjsWsCodec, MjsWsSchemaOptions } from './schema.js'
 import { t } from '../messages/index.js'
@@ -232,7 +232,7 @@ export interface MjsWsOptions {
    * (`opts.resume` absent), différée à l'expiration de la grâce sinon (jamais pour une coupure
    * encore en grâce, jamais deux fois pour la même connexion). Miroir du webhook 'disconnect' du
    * pont universel (bridge.ts, notifyDisconnect), mais TOUJOURS disponible même sans `opts.bridge`
-   * — pensée pour un module de composition (ex. MJS-Server, cf. mjs-framework/mjs-server) qui a besoin
+   * — pensée pour un module de composition (ex. MJS-Server, cf. modularjs-framework/mjs-server) qui a besoin
    * d'être prévenu sans monter un pont HTTP juste pour ça. Cf. docs/23-mjs-ws.md §8.2 point 5.
    */
   onDisconnect?: (client: MjsWsClient, reason?: string) => void

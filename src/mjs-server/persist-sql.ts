@@ -43,7 +43,7 @@
 // fire-and-forget par contrat ; load() avale l'erreur et renvoie [], démarrage SANS restauration —
 // MÊME repli que persist-redis.ts/persist-bridge.ts).
 //
-//   import { mjsServer, SqlPersistAdapter } from 'mjs-framework/mjs-server'
+//   import { mjsServer, SqlPersistAdapter } from 'modularjs-framework/mjs-server'
 //   app = mjsServer({ persist: new SqlPersistAdapter({ query, table: 'saved_games', dialect: '$' }) })
 
 import type { MjsWsLogFn, MjsWsLogLevel } from '../mjs-ws/index.js'

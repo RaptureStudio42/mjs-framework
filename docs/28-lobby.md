@@ -8,7 +8,7 @@
 ```ts
 // serveur — TypeScript classique (lobbyPackage est une simple composition app.use(), comme
 // chatPackage/accountsPackage — pas de dialecte Civet dédié ici)
-import { mjsWs, lobbyPackage } from 'mjs-framework/ws'
+import { mjsWs, lobbyPackage } from 'modularjs-framework/ws'
 
 const app = mjsWs({ auth: (hello) => ({ id: hello.auth?.id, name: hello.auth?.name }) })
 app.use(lobbyPackage())
@@ -72,7 +72,7 @@ réel, à la charge de l'appli hôte (cf. [§8](#annonces)).
 
 ```ts
 // lobby.server.ts
-import { mjsWs, lobbyPackage } from 'mjs-framework/ws'
+import { mjsWs, lobbyPackage } from 'modularjs-framework/ws'
 
 const app = mjsWs({
   auth: (hello) => ({ id: hello.auth?.id, name: hello.auth?.name }),
@@ -277,8 +277,8 @@ Le paquet Lobby n'importe **jamais** le module jeu (aucune dépendance dure). Po
 appariement de partie :
 
 ```ts
-import { mjsWs, lobbyPackage } from 'mjs-framework/ws'
-import { mjsServer } from 'mjs-framework/mjs-server'   // module jeu — importé par TON appli, pas par lobby.ts
+import { mjsWs, lobbyPackage } from 'modularjs-framework/ws'
+import { mjsServer } from 'modularjs-framework/mjs-server'   // module jeu — importé par TON appli, pas par lobby.ts
 
 const app = mjsServer(mjsWs({ auth }))
 

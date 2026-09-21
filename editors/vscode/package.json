@@ -7,7 +7,7 @@
   "license": "MIT",
   "categories": ["Programming Languages"],
   "keywords": ["modularjs", "mjs", "civet", "web components", "shadow dom"],
-  "repository": { "type": "git", "url": "git+https://github.com/RaptureStudio42/mjs-framework.git", "directory": "editors/vscode" },
+  "repository": { "type": "git", "url": "git+https://github.com/RaptureStudio42/modularjs-framework.git", "directory": "editors/vscode" },
   "homepage": "https://modularjs.rapturestudio.fr",
   "engines": { "vscode": "^1.70.0" },
   "contributes": {

@@ -5,7 +5,7 @@
 ```ts
 // serveur — TypeScript classique (chatPackage est une simple composition app.use(), pas une
 // déclaration façon app.game() de MJS-Server — pas de dialecte Civet dédié ici)
-import { mjsWs, chatPackage } from 'mjs-framework/ws'
+import { mjsWs, chatPackage } from 'modularjs-framework/ws'
 
 const app = mjsWs({ auth: (hello) => ({ id: hello.auth?.id, name: hello.auth?.name }) })
 app.use(chatPackage())
@@ -56,7 +56,7 @@ Un salon de discussion redemande toujours la même mécanique — historique au 
 
 ```ts
 // chat.server.ts
-import { mjsWs, chatPackage } from 'mjs-framework/ws'
+import { mjsWs, chatPackage } from 'modularjs-framework/ws'
 
 const app = mjsWs({
   auth: (hello) => ({ id: hello.auth?.id, name: hello.auth?.name }),

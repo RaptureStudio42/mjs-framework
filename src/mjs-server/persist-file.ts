@@ -12,7 +12,7 @@
 // pour un échec du mkdir initial (`_ready`, jamais réessayé) : warn à chaque écriture tant qu'il
 // reste rejeté — limite connue v1, même choix que persist-sql.ts pour son CREATE TABLE.
 //
-//   import { mjsServer, FilePersistAdapter } from 'mjs-framework/mjs-server'
+//   import { mjsServer, FilePersistAdapter } from 'modularjs-framework/mjs-server'
 //   app = mjsServer({ persist: new FilePersistAdapter({ dir: './saves' }) })
 
 import { mkdir, readdir, readFile, writeFile, rename, unlink } from 'node:fs/promises'

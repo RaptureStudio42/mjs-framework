@@ -1,6 +1,6 @@
 {
-  "name": "@matrixfr/mjs-framework",
-  "version": "2.4.2",
+  "name": "modularjs-framework",
+  "version": "2.4.4",
   "description": "ModularJS (MJS) — framework front compile-time : réactivité résolue à la compilation (sans Proxy au runtime), Custom Elements + Shadow DOM, syntaxe .mjs (Civet par défaut). Compilateur + runtime + CLI dev/HMR.",
   "license": "MIT",
   "author": "Matrix",
@@ -20,10 +20,10 @@
   "homepage": "https://mjs.rapturestudio.fr",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RaptureStudio42/mjs-framework.git"
+    "url": "git+https://github.com/RaptureStudio42/modularjs-framework.git"
   },
   "bugs": {
-    "url": "https://github.com/RaptureStudio42/mjs-framework/issues"
+    "url": "https://github.com/RaptureStudio42/modularjs-framework/issues"
   },
   "type": "module",
   "main": "dist/index.js",
@@ -54,7 +54,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bash script/test-enclos.sh",
     "test:brut": "mocha --recursive tests/ --extension ts --require tsx/esm --require ./tests/helpers/tmp-sweep.ts --exit",
-    "test:browser": "mocha tests/browser-smoke/smoke.browser.mts --require tsx/esm --exit --timeout 180000",
+    "test:browser": "mocha tests/browser-smoke/smoke.browser.mts tests/browser-smoke/transitions.browser.mts --require tsx/esm --exit --timeout 600000",
     "lint": "eslint .",
     "bench:ws": "tsx bench/mjs-ws-bench.ts",
     "prepublishOnly": "npm run build:self && npm run typecheck && npm run lint && npm test",

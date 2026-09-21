@@ -10,7 +10,7 @@
 // l'identique à tous (µgame:orders) ; cf. mjs-server/lockstep.ts pour le contrat complet, et plus bas
 // pour les trames spécifiques (µgame:orders/hash, formes lockstep de play/start/resync).
 //
-//   import { mjsServer } from 'mjs-framework/mjs-server'
+//   import { mjsServer } from 'modularjs-framework/mjs-server'
 //   app = mjsServer({ auth: (hello) => ({ id: hello.auth.uid }) })   // MÊMES options que mjsWs()
 //   app.game('morpion', {
 //     places: 2, code: true,
@@ -151,7 +151,7 @@ export { asTypedGame, defineTypedGame } from './contract.js'
 export type { MjsServerGameContract, MjsServerReservedState, TypedGame, MjsGameLoose, TypedGameDef } from './contract.js'
 // paquets activables (cf. src/mjs-ws/packages.ts) — RÉ-EXPORTÉS ici pour
 // l'ergonomie d'un fichier serveur MJS-Server pur (`import { mjsServer, definePackage } from
-// 'mjs-framework/mjs-server'`, sans import séparé depuis 'mjs-framework/ws'). `app.use` lui-même n'a besoin
+// 'modularjs-framework/mjs-server'`, sans import séparé depuis 'modularjs-framework/ws'). `app.use` lui-même n'a besoin
 // d'AUCUNE ligne ici : hérité tel quel de MJS-WS (MjsServerApp extends MjsWsApp ci-dessous, l'objet
 // app retourné par mjsWs() le porte déjà) — ce ré-export ne fait que rendre `definePackage`/
 // `echoPackage`/`MjsPackage` atteignables depuis ce module, ZÉRO logique dupliquée.

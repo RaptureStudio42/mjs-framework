@@ -17,7 +17,7 @@ npm i -D happy-dom
 ```
 
 ```ts
-import { createHarness } from 'mjs-framework/testing'
+import { createHarness } from 'modularjs-framework/testing'
 ```
 
 ## 3. Un exemple complet
@@ -55,7 +55,7 @@ Et le fichier de test, du début à la fin :
 ```ts
 // tests/my-components.test.ts
 import assert from 'node:assert/strict'
-import { createHarness } from 'mjs-framework/testing'
+import { createHarness } from 'modularjs-framework/testing'
 
 describe('my-counter & my-greeter', function () {
   this.timeout(60000)

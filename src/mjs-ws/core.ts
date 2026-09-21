@@ -1530,7 +1530,7 @@ export function createCore(transport: MjsWsTransport, opts: MjsWsResolvedOptions
     // plus bas, déjà pleinement assignée au moment où `use` est APPELÉE — jamais avant, MÊME
     // principe que les accroches `(app as any)._binaryHandler`/`_cluster` posées après ce littéral)
     // : c'est CET objet — avec toute mutation ultérieure d'un composeur externe (ex. MJS-Server, qui
-    // réassigne app.serve/app.on APRÈS mjsWs(), cf. mjs-framework/mjs-server) déjà en place au moment de
+    // réassigne app.serve/app.on APRÈS mjsWs(), cf. modularjs-framework/mjs-server) déjà en place au moment de
     // l'appel — que reçoit `pkg.installer`. Un paquet installé sur une app MJS-Server voit donc bien
     // la garde de préfixe réservé de MJS-Server sur `app.serve`/`app.on`, jamais contournée.
     // `pkg.nom` inscrit SEULEMENT après un installer qui n'a PAS levé (avant :

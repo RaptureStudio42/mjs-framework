@@ -4,7 +4,7 @@
 
 **Un framework front compile-time : la réactivité est résolue à la compilation, pas au runtime.** Pas de Proxy ni de Virtual DOM — chaque composant est un *Custom Element* avec son *Shadow DOM*, et le compilateur génère des mises à jour DOM chirurgicales.
 
-[![npm](https://img.shields.io/npm/v/@matrixfr/mjs-framework)](https://www.npmjs.com/package/@matrixfr/mjs-framework)
+[![npm](https://img.shields.io/npm/v/modularjs-framework)](https://www.npmjs.com/package/modularjs-framework)
 [![licence](https://img.shields.io/badge/licence-MIT-blue)](./LICENSE)
 [![site](https://img.shields.io/badge/site-mjs.rapturestudio.fr-2f6df6)](https://mjs.rapturestudio.fr/)
 
@@ -21,7 +21,7 @@
 
 Tout tourne en ligne sur le site officiel — **[mjs.rapturestudio.fr](https://mjs.rapturestudio.fr/)** : la documentation, le tutoriel interactif et une vitrine de composants qui s'exécutent dans la page. Le site est lui-même écrit en MJS.
 
-[![L'accueil de ModularJS](https://raw.githubusercontent.com/RaptureStudio42/mjs-framework/main/docs/img/accueil-fr.png)](https://mjs.rapturestudio.fr/)
+[![L'accueil de ModularJS](https://raw.githubusercontent.com/RaptureStudio42/modularjs-framework/main/docs/img/accueil-fr.png)](https://mjs.rapturestudio.fr/)
 
 ## Pourquoi MJS
 
@@ -35,7 +35,7 @@ Tout tourne en ligne sur le site officiel — **[mjs.rapturestudio.fr](https://m
 ## Installation
 
 ```bash
-npm install @matrixfr/mjs-framework
+npm install modularjs-framework
 ```
 
 ### Coloration dans l'éditeur
@@ -108,8 +108,8 @@ Les flags CLI (`--output`, `--manifest`) ont la priorité sur le fichier de conf
 ## Contribuer
 
 ```bash
-git clone https://github.com/RaptureStudio42/mjs-framework.git
-cd mjs-framework
+git clone https://github.com/RaptureStudio42/modularjs-framework.git
+cd modularjs-framework
 npm install
 npm run build:self   # construit le compilateur (dist/)
 npm test             # suite de tests
@@ -127,7 +127,7 @@ Une faille de sécurité à signaler ? Voir [SECURITY.md](./SECURITY.md).
 
 **A compile-time front-end framework: reactivity is resolved at compile time, not at runtime.** No Proxy, no Virtual DOM — every component is a *Custom Element* with its own *Shadow DOM*, and the compiler generates surgical DOM updates.
 
-[![npm](https://img.shields.io/npm/v/@matrixfr/mjs-framework)](https://www.npmjs.com/package/@matrixfr/mjs-framework)
+[![npm](https://img.shields.io/npm/v/modularjs-framework)](https://www.npmjs.com/package/modularjs-framework)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 [![site](https://img.shields.io/badge/site-mjs.rapturestudio.fr-2f6df6)](https://mjs.rapturestudio.fr/?lang=en)
 
@@ -144,7 +144,7 @@ Une faille de sécurité à signaler ? Voir [SECURITY.md](./SECURITY.md).
 
 Everything runs online on the official site — **[mjs.rapturestudio.fr](https://mjs.rapturestudio.fr/?lang=en)**: the documentation, the interactive tutorial and a showcase of components executing right in the page. The site itself is written in MJS.
 
-[![The ModularJS home page](https://raw.githubusercontent.com/RaptureStudio42/mjs-framework/main/docs/img/accueil-en.png)](https://mjs.rapturestudio.fr/?lang=en)
+[![The ModularJS home page](https://raw.githubusercontent.com/RaptureStudio42/modularjs-framework/main/docs/img/accueil-en.png)](https://mjs.rapturestudio.fr/?lang=en)
 
 ## Why MJS
 
@@ -158,7 +158,7 @@ Everything runs online on the official site — **[mjs.rapturestudio.fr](https:/
 ## Installation
 
 ```bash
-npm install @matrixfr/mjs-framework
+npm install modularjs-framework
 ```
 
 ### Editor syntax highlighting
@@ -231,8 +231,8 @@ CLI flags (`--output`, `--manifest`) take priority over the config file.
 ## Contributing
 
 ```bash
-git clone https://github.com/RaptureStudio42/mjs-framework.git
-cd mjs-framework
+git clone https://github.com/RaptureStudio42/modularjs-framework.git
+cd modularjs-framework
 npm install
 npm run build:self   # builds the compiler (dist/)
 npm test             # test suite

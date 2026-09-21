@@ -5,7 +5,7 @@
 `mjsWs` est le **serveur compagnon officiel** de `µsocket` : un moteur Node qui parle nativement le protocole `µ:` (handshake, ping/pong, requêtes/accusés de réception, pub/sub, salons, présence, flux à deltas numérotés, protections anti-abus…) pour que tu n'aies plus jamais à le ré-écrire à la main derrière une `WebSocketServer` nue.
 
 ```js
-import { mjsWs } from 'mjs-framework/ws'
+import { mjsWs } from 'modularjs-framework/ws'
 
 const app = mjsWs({
   auth:    (hello, meta) => hello.auth?.token === PROCESS_SECRET ? { id: hello.auth.userId, pseudo: hello.auth.pseudo } : false,
@@ -128,7 +128,7 @@ Une trame WebSocket **binaire** (par opposition au texte JSON du protocole `µ:`
 #### Déclarer un schéma — `app.schema(nom, champs)`
 
 ```js
-import { mjsWs, list, bits } from 'mjs-framework/ws'
+import { mjsWs, list, bits } from 'modularjs-framework/ws'
 
 const app = mjsWs({ codec: 'auto' })
 
@@ -644,7 +644,7 @@ Le pont est un **second serveur HTTP**, embarqué dans le même process que `mjs
 ### 7.1 Activer le pont — `opts.bridge`
 
 ```js
-import { mjsWs } from 'mjs-framework/ws'
+import { mjsWs } from 'modularjs-framework/ws'
 
 const app = mjsWs({
   // ... auth/welcome/rooms/etc., comme d'habitude (§1) ...
@@ -858,12 +858,12 @@ createServer((req, res) => {
 }).listen(3000)
 ```
 
-### 7.6 Jetons — signer/vérifier sans dépendance (`mjs-framework/ws`)
+### 7.6 Jetons — signer/vérifier sans dépendance (`modularjs-framework/ws`)
 
 `mjsWs` fournit des jetons **JWT HS256** sans aucune dépendance (base64url + HMAC-SHA256, `node:crypto` seul) — interopérables avec les bibliothèques JWT standard de n'importe quel langage (même algorithme, même format).
 
 ```js
-import { signToken, verifyToken, jwtAuth } from 'mjs-framework/ws'
+import { signToken, verifyToken, jwtAuth } from 'modularjs-framework/ws'
 
 // émission (ex. après un login classique, côté ton API)
 const jeton = signToken({ id: utilisateur.id, pseudo: utilisateur.pseudo }, process.env.JWT_SECRET, { ttl: 3600 })
@@ -1535,7 +1535,7 @@ Aucun paquet `redis`/`ioredis`/`node-redis` n'est ajouté. `src/mjs-ws/adapter-r
 Comme `MemoryTransport` (transport en mémoire, pour les tests) a son pendant : `MemoryAdapter`, un bus **partagé** en mémoire, à donner à plusieurs `mjsWs()` **dans le même** process de test — simule fidèlement plusieurs process réels (même filtrage « je m'ignore moi-même », même compteur global pour les flux, même mécanique de bail de vie avec horloge injectable pour simuler une expiration sans vrai délai).
 
 ```js
-import { mjsWs, MemoryAdapter, createMemoryAdapterBus } from 'mjs-framework/ws'
+import { mjsWs, MemoryAdapter, createMemoryAdapterBus } from 'modularjs-framework/ws'
 
 const bus  = createMemoryAdapterBus()
 const appA = mjsWs({ adapter: new MemoryAdapter({ bus }), /* ... */ })
@@ -1612,7 +1612,7 @@ Zéro branche nouvelle, zéro octet ajouté au bundle client, zéro coût serveu
 
 ```ts
 // contrat.ts — partagé entre ws.server.mjs et tes composants, importé EN TYPE des deux côtés
-import type { MjsWsContract } from 'mjs-framework/ws'
+import type { MjsWsContract } from 'modularjs-framework/ws'
 
 export interface MonContrat extends MjsWsContract {
   serves: {
@@ -1633,7 +1633,7 @@ TS suffit — une interface qui a la même forme convient.
 
 ```civet
 import type { MonContrat } from './contrat.ts'
-@import asTypedApp 'mjs-framework/ws'
+@import asTypedApp 'modularjs-framework/ws'
 
 export default {
   auth: (hello)-> hello.auth?.token is process.env.SECRET and { id: hello.auth.userId }
@@ -1653,7 +1653,7 @@ export default {
 ```civet
 <script>
   import type { MonContrat } from '../contrat.ts'
-  import { asTypedSocket } from 'mjs-framework/ws'
+  import { asTypedSocket } from 'modularjs-framework/ws'
 
   sock  = µ.socket('wss://jeu/play')
   typed = asTypedSocket<MonContrat>(sock)
@@ -1700,7 +1700,7 @@ Tout ce que `mjsWs` fait avec le réseau passe par **une** interface, `MjsWsTran
 | une instance déjà construite | Utilisée **telle quelle** — `MemoryTransport` en test (§2, aucun socket réseau), ou un transport **maison** (§12.4) qui parle un tout autre canal bas niveau. |
 
 ```js
-import { mjsWs } from 'mjs-framework/ws'
+import { mjsWs } from 'modularjs-framework/ws'
 
 const app = mjsWs({ transport: 'uws', /* ...auth/welcome/rooms, comme d'habitude (§1)... */ })
 await app.listen()
@@ -1762,7 +1762,7 @@ interface MjsWsTransport {
 C'est **tout** ce que `mjsWs` demande à un transport — trois méthodes, une poignée de connexion. Squelette d'adaptateur maison (un canal **ipc**, un pont vers un autre protocole bas niveau, une queue de messages…) :
 
 ```ts
-import type { MjsWsConnection, MjsWsRemoteInfo, MjsWsTransport } from 'mjs-framework/ws'
+import type { MjsWsConnection, MjsWsRemoteInfo, MjsWsTransport } from 'modularjs-framework/ws'
 
 class MonTransportMaison implements MjsWsTransport {
   private handler: ((conn: MjsWsConnection) => void) | null = null

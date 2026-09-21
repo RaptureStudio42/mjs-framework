@@ -5,7 +5,7 @@
 // la rejoindre en un clic. AUCUNE dépendance dure au module jeu : l'intégration jeu passe par
 // `opts.onJoin`, un simple crochet (recette complète, docs/28-lobby.md).
 //
-//   import { mjsWs, lobbyPackage } from 'mjs-framework/ws'
+//   import { mjsWs, lobbyPackage } from 'modularjs-framework/ws'
 //   app = mjsWs({ auth: ... })
 //   app.use(lobbyPackage({ moderators: (identity) => (identity as any)?.role === 'admin' }))
 //   await app.listen()

@@ -15,7 +15,7 @@ MJS suit la stratégie **« rendre puis remplacer »** (*render-then-replace*) :
 ## 1. Rendre un composant — `renderToString`
 
 ```js
-import { renderToString } from 'mjs-framework'
+import { renderToString } from 'modularjs-framework'
 
 const { html, sharedScript } = await renderToString({
   sourceDir: './app/mjs',     // dossier des composants .mjs
@@ -101,7 +101,7 @@ Voir [Stores](14-stores.md#déclarer-les-clés-attendues-du-serveur-init) pour d
 `renderToString` recompile à chaque appel. Pour rendre **plusieurs** composants (ou servir plusieurs requêtes), compile **une seule fois** avec `createSSRRenderer` :
 
 ```js
-import { createSSRRenderer } from 'mjs-framework'
+import { createSSRRenderer } from 'modularjs-framework'
 
 const renderer = await createSSRRenderer({ sourceDir: './app/mjs' })
 

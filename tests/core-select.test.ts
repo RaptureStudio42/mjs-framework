@@ -35,6 +35,33 @@ const HOST = `<script>
   </@select>
 </div>
 
+<div id="sel-match-fuzzy">
+  <@select name="mf" search match="fuzzy">
+    <@option value="fr">France</@option>
+    <@option value="be">Belgique</@option>
+    <@option value="de">Allemagne</@option>
+    <@option value="us">États-Unis</@option>
+  </@select>
+</div>
+
+<div id="sel-match-starts">
+  <@select name="ms" search match="starts">
+    <@option value="fr">France</@option>
+    <@option value="be">Belgique</@option>
+    <@option value="de">Allemagne</@option>
+    <@option value="us">États-Unis</@option>
+  </@select>
+</div>
+
+<div id="sel-match-starts-fuzzy">
+  <@select name="msf" search match="starts-fuzzy">
+    <@option value="fr">France</@option>
+    <@option value="be">Belgique</@option>
+    <@option value="de">Allemagne</@option>
+    <@option value="us">États-Unis</@option>
+  </@select>
+</div>
+
 <div id="sel-multi">
   <@select name="multi" multiple>
     <@option value="fr">France</@option>
@@ -463,6 +490,55 @@ describe('core-select/core-option — comportement runtime (happy-dom, bundler r
       click(btn('sel-search'))
       await tick()
       assert.equal(options('sel-search').length, 3)
+    })
+  })
+
+  // les quatre modes de `match` — chaque cas vérifie ce qui PASSE et ce qui est REFUSÉ, sinon un
+  // mode qui laisserait tout passer (ou rien) rendrait le même vert qu'un mode juste
+  describe('modes de recherche (match)', () => {
+    async function labelsFor(id: string, query: string): Promise<string[]> {
+      if (btn(id).getAttribute('aria-expanded') !== 'true') {
+        click(btn(id))
+        await tick()
+      }
+      const input = sel(id)._shadow.querySelector('.select-search')
+      input.value = query
+      input.dispatchEvent(new window.Event('input', { bubbles: true, cancelable: true, composed: true }))
+      await tick()
+      return Array.from(options(id)).map((o: any) => o.textContent.trim())
+    }
+
+    it('contains (défaut) : les lettres collées et dans l\'ordre, n\'importe où — « lema » trouve Allemagne, « lgq » ne trouve rien', async () => {
+      assert.deepEqual(await labelsFor('sel-search', 'lema'), ['Allemagne'])
+      assert.deepEqual(await labelsFor('sel-search', 'lgq'), [])
+      key(wrapper('sel-search'), 'Escape')
+      await tick()
+    })
+
+    it('fuzzy : chaque lettre dans l\'ordre, trous permis — « bgq » et « lgq » trouvent Belgique, « eqb » (ordre faux) ne trouve rien', async () => {
+      assert.deepEqual(await labelsFor('sel-match-fuzzy', 'bgq'), ['Belgique'])
+      assert.deepEqual(await labelsFor('sel-match-fuzzy', 'lgq'), ['Belgique'])
+      assert.deepEqual(await labelsFor('sel-match-fuzzy', 'eqb'), [])
+      assert.deepEqual(await labelsFor('sel-match-fuzzy', 'ÉTA'), ['États-Unis'])
+      key(wrapper('sel-match-fuzzy'), 'Escape')
+      await tick()
+    })
+
+    it('starts : l\'étiquette commence par ce qui est tapé — « bel » trouve Belgique, « elg » ne trouve rien', async () => {
+      assert.deepEqual(await labelsFor('sel-match-starts', 'bel'), ['Belgique'])
+      assert.deepEqual(await labelsFor('sel-match-starts', 'elg'), [])
+      assert.deepEqual(await labelsFor('sel-match-starts', 'etats'), ['États-Unis'])
+      key(wrapper('sel-match-starts'), 'Escape')
+      await tick()
+    })
+
+    it('starts-fuzzy : première lettre ancrée, le reste souple — « bgq » trouve Belgique, « gq » ne trouve rien, « aln » trouve Allemagne', async () => {
+      assert.deepEqual(await labelsFor('sel-match-starts-fuzzy', 'bgq'), ['Belgique'])
+      assert.deepEqual(await labelsFor('sel-match-starts-fuzzy', 'gq'), [])
+      assert.deepEqual(await labelsFor('sel-match-starts-fuzzy', 'aln'), ['Allemagne'])
+      assert.deepEqual(await labelsFor('sel-match-starts-fuzzy', 'f'), ['France'])
+      key(wrapper('sel-match-starts-fuzzy'), 'Escape')
+      await tick()
     })
   })
 

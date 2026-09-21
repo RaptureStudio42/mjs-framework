@@ -2,7 +2,7 @@
 
 > 📚 Pas de chapitre de tuto interactif dédié : cette page se suffit à elle-même. Les encarts 🎓 *Pour débutants* dépliables donnent l'explication pas-à-pas ; le corps de la page reste la référence dense.
 
-Une petite bibliothèque de composants **prêts à l'emploi**, livrée avec le framework : un menu déroulant, une enveloppe de champ, une case à cocher, un bouton radio, un interrupteur, une pastille de couleur et une image (module à part, voir [35 · Images](35-images.md)). Chacun gère lui-même le clavier, le lecteur d'écran et sa participation à un `<form>` natif — et chacun est **100&nbsp;% stylisable** depuis ton propre CSS, sans jamais avoir besoin d'un `!important`.
+Une petite bibliothèque de composants **prêts à l'emploi**, livrée avec le framework : un menu déroulant, une enveloppe de champ, une case à cocher, un bouton radio, un interrupteur, une pastille de couleur, un bloc de code à copier et une image (module à part, voir [35 · Images](35-images.md)). Chacun gère lui-même le clavier, le lecteur d'écran et sa participation à un `<form>` natif — et chacun est **100&nbsp;% stylisable** depuis ton propre CSS, sans jamais avoir besoin d'un `!important`.
 
 ## Le raccourci `<@nom>`
 
@@ -26,6 +26,7 @@ Un module cœur s'invoque avec la **même notation** qu'un composant du projet, 
 | `name` | nom de champ posé sur le(s) `<input type="hidden">` internes, un par valeur sélectionnée |
 | `value=!{$x}` | valeur sélectionnée, two-way — une chaîne, ou un tableau de chaînes en mode `multiple` |
 | `search` | bascule la recherche : un champ de filtre apparaît en tête du panneau |
+| `match` | mode de la recherche — `contains` (défaut), `starts`, `fuzzy` ou `starts-fuzzy` ; cf. « Les quatre modes de recherche » ci-dessous |
 | `multiple` | sélection multiple (coche plusieurs options, `value` devient un tableau) |
 | `icon-checked` | icône d'une option cochée, mode `multiple` seulement — texte échappé, jamais du HTML — défaut `✔` |
 | `icon-unchecked` | icône d'une option non cochée, mode `multiple` seulement — texte échappé, jamais du HTML — défaut vide |
@@ -33,7 +34,13 @@ Un module cœur s'invoque avec la **même notation** qu'un composant du projet, 
 | `search-placeholder` | placeholder du champ de recherche — défaut « Rechercher… » |
 | `empty-label` | message quand le filtre ne trouve rien — défaut « Aucun résultat » |
 
-Chaque `<@option value={…} icon={…}>` déclare une entrée ; `icon` est un texte affiché tel quel (emoji, caractère, petit mot) — la valeur est lue par `getAttribute` puis rendue par une interpolation ÉCHAPPÉE, jamais du HTML (`<svg>`…). La recherche filtre insensible aux accents ; le clavier répond aux flèches Haut/Bas, `Enter` (choisir), `Escape` (fermer), `Home`/`End` (première/dernière option) ; le bouton porte `role="combobox"` et les attributs ARIA associés (`aria-expanded`, `aria-controls`, `aria-activedescendant`) se tiennent à jour tout seuls.
+Chaque `<@option value={…} icon={…}>` déclare une entrée ; `icon` est un texte affiché tel quel (emoji, caractère, petit mot) — la valeur est lue par `getAttribute` puis rendue par une interpolation ÉCHAPPÉE, jamais du HTML (`<svg>`…). La recherche filtre insensible aux accents et à la casse ; le clavier répond aux flèches Haut/Bas, `Enter` (choisir), `Escape` (fermer), `Home`/`End` (première/dernière option) ; le bouton porte `role="combobox"` et les attributs ARIA associés (`aria-expanded`, `aria-controls`, `aria-activedescendant`) se tiennent à jour tout seuls.
+
+**Les quatre modes de recherche (`match`).** Accents et casse ne comptent jamais (« ALLEMA » trouve « Allemagne », « etats » trouve « États-Unis »). `contains` — le défaut — : les lettres tapées, collées et dans l'ordre, n'importe où dans l'étiquette (« lema » trouve « Allemagne », « lgq » ne trouve rien). `starts` : l'étiquette doit commencer par ce qui est tapé (« bel » trouve « Belgique », « elg » ne trouve rien). `fuzzy` : chaque lettre tapée doit se retrouver dans l'étiquette, dans l'ordre, des trous permis entre elles (« bgq » trouve « Belgique » — B·el·G·i·Q·ue ; « eqb » ne trouve rien, l'ordre est faux). `starts-fuzzy` : la première lettre tapée doit être la première de l'étiquette, le reste suit la règle `fuzzy` (« bgq » trouve « Belgique », « gq » ne trouve rien). Une valeur inconnue retombe sur `contains`.
+
+```html
+<@select name="country" search match="starts-fuzzy">…</@select>
+```
 
 **Parts** : `button`, `panel`, `search`, `option`. **Variables** : `--mjs-select-bg`/`-fg`/`-border`/`-radius`/`-hover`/`-panel-bg`/`-panel-shadow`/`-selected`, plus `--mjs-select-max` (largeur préférée maximale, 22rem par défaut — cf. plus bas). Une dixième, `--mjs-select-panel-max`, est **posée par le module lui-même** (rien à définir de ton côté) : hauteur maximale du panneau, recalculée à chaque ouverture **et à chaque redimensionnement de la fenêtre pendant qu'il est ouvert** (le clavier virtuel d'un mobile qui rétrécit la vue, typiquement), selon la place réellement disponible du côté choisi (haut ou bas), plafonnée à 280px — c'est ce qui évite qu'un panneau ouvert vers le haut dans un conteneur court sorte par le haut de l'écran, là où aucun défilement ne va le chercher. La place disponible fait toujours loi : quand elle est courte, le panneau rétrécit d'autant (deux options visibles et un défilement interne, plutôt qu'un sommet inatteignable). Le champ de recherche reste `position: sticky` en tête pendant le défilement des options.
 
@@ -123,6 +130,58 @@ Affiche le code de la couleur écrit tel quel, suivi de la pastille — **lectur
 ## Tous compatibles `<form>` natif
 
 Les cinq modules de saisie — select compris, et à l'exception de la pastille `<@color>`, qui montre une couleur sans rien soumettre — maintiennent chacun un ou plusieurs `<input type="hidden">` internes qui reflètent leur valeur courante. Un `<form method="post">` classique les ramasse donc comme n'importe quel champ natif, sans un `µ.ajax` ni un `@submit` à écrire : c'est cette même mécanique qui rend `<@field>` capable de lire `µres.errors[name]` — le `name` posé sur le module est le même que celui reçu côté serveur.
+
+## `<@code>` — bloc de code à copier
+
+```html
+<@code>const total = a + b</@code>
+```
+
+Le code s'écrit **entre les deux balises, et rien d'autre** : ni `<pre>`, ni `<code>`. Le module pose lui-même le cadre, la fonte à chasse fixe et `white-space: pre`, et retire le décalage commun à toutes les lignes — celui du gabarit appelant — en conservant les retraits relatifs :
+
+```html
+<@code>
+  µmount ->
+    console.log('prêt')
+</@code>
+```
+
+affiche `µmount ->` collé à gauche et `console.log('prêt')` indenté de deux espaces.
+
+Le bouton « copier » se pose dans l'angle haut-droit, `position: sticky` : au repos, il reste dans l'angle du bloc ; quand le bloc défile sous le haut de la zone visible, il suit jusqu'au bas du bloc plutôt que de disparaître.
+
+Un clic copie tout le texte affiché via `navigator.clipboard.writeText`. Sans cette API (page servie en http, hors localhost), repli sur `document.execCommand('copy')`. Une copie réussie affiche une coche pendant 1,6 s, le temps que le libellé annonce la copie.
+
+### Fournir soi-même le bloc préformaté
+
+Quand un `<pre>` est projeté — code déjà colorié par un moteur de coloration, mise en forme maison —, `<@code>` le **laisse entièrement intact** : il n'ajoute ni cadre, ni fonte, ni retrait, et se contente du bouton. Plusieurs blocs dans le même `<@code>` sont joints par un saut de ligne à la copie, blancs de fin retirés.
+
+```html
+<@code>
+  <pre><code><span class="kw">const</span> total = a + b</code></pre>
+</@code>
+```
+
+La bascule est automatique : `<pre>` projeté ⇒ enveloppe neutre ; rien de préformaté ⇒ le module habille le bloc.
+
+| Attribut | Rôle |
+|---|---|
+| `label` | libellé du bouton au repos — sert d'`aria-label` et de `title` — défaut « Copier le code » |
+| `copied-label` | libellé annoncé aux lecteurs d'écran pendant la confirmation, après une copie réussie — défaut « Copié ! » |
+
+**Parts** : `box` (l'enveloppe), `code` (la zone de texte), `button`. **Variables du cadre** (mode sans `<pre>` seulement) : `--mjs-code-bg`/`-fg`/`-border`/`-radius`/`-pad`/`-font`/`-size`/`-line`. **Variables du bouton** : `--mjs-code-copy-bg`/`-fg`/`-border`/`-ok` (fond, texte, bordure, couleur de la coche) et `--mjs-code-copy-top` — la distance au haut de la zone visible où le bouton s'arrête en défilant, 0 par défaut. Une page qui défile sous un en-tête fixe règle cette variable à la hauteur de l'en-tête ; une boîte qui défile toute seule (`overflow: auto`) la remet à 0 sur elle-même, sinon elle hérite de la valeur de la page.
+
+```css
+:root {
+  --mjs-code-copy-top: 56px;
+}
+
+.panel {
+  --mjs-code-copy-top: 0;
+}
+```
+
+Seuls les projets qui écrivent `<@code>` l'embarquent au bundle.
 
 ## Thème clair/sombre — `µtheme`
 

@@ -23,7 +23,7 @@
 // mais qui EXISTE réellement à côté de l'entry ou sous --root (forme composant
 // `utils/helpers.civet`), résolue et compilée récursivement si `.civet`/`.mjs` (« c'est du MJS »),
 // importée telle quelle si `.js`/`.cjs`/`.json` ; sinon spécificateur NU laissé à Node (`node:fs`,
-// un paquet npm AVEC ou SANS sous-chemin/`@scope` — `mjs-framework/ws`, `@scope/pkg/sub` — si
+// un paquet npm AVEC ou SANS sous-chemin/`@scope` — `modularjs-framework/ws`, `@scope/pkg/sub` — si
 // `<root>/node_modules` existe, cf. cache ci-dessus). Un `/` dans le spécificateur ne
 // suffit plus à le prendre pour un chemin (cf. `looksLikePath` ci-dessous) — seule une cible SANS
 // préfixe qui finit par `.civet`/`.mjs` ET n'existe nulle part est encore une erreur forcée (« cible
@@ -132,7 +132,7 @@ const IMPORT_RE = /^[ \t]*@import\s+(?:(default)\s+)?([a-zA-Z0-9_$,\s]+?)\s+(['"
 // silencieux vers Node) — SOIT un préfixe explicite (`./`, `../`, `/`, `file:`), SOIT (sans ce
 // préfixe) une extension composant `.civet`/`.mjs` (forme `utils/helpers.civet`, forcément un
 // fichier VOULU, jamais un sous-chemin de paquet npm). Un `/` seul ne suffit plus —
-// `mjs-framework/ws`, `@scope/pkg/sub` ont un `/` mais NI préfixe NI extension composant, donc
+// `modularjs-framework/ws`, `@scope/pkg/sub` ont un `/` mais NI préfixe NI extension composant, donc
 // spécificateur NU laissé à Node (l'ancien test `spec.includes('/')` les prenait à tort pour une
 // cible de projet, cf. docs/23-mjs-ws.md §13.2).
 function looksLikePath(spec: string): boolean {

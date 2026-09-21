@@ -43,7 +43,7 @@ function loadWs(): Promise<typeof import('ws')> {
   if (!wsModulePromise) {
     // `import('ws')` échoue en un message Node brut et cryptique ("Cannot find
     // package 'ws'…") si le paquet est absent (install partielle/pruning) — `ws`
-    // est une dependency normale de mjs-framework (jamais à installer à part en
+    // est une dependency normale de modularjs-framework (jamais à installer à part en
     // usage courant), mais `mjs ws` (cli/ws.ts) reste le PREMIER point qui charge
     // vraiment ce module (import paresseux, cf. commentaire de tête) : c'est ICI,
     // et ICI SEULEMENT, que l'absence se révèle — message clair, en français.

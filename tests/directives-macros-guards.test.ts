@@ -31,8 +31,8 @@ describe('injection JS par la cible de @import (guillemet mixte)', function () {
     )
   })
 
-  it('cibles normales inchangées : ./a.civet, "lib/x.js", mjs-framework/ws, https://…', async () => {
-    for (const cible of [`'./a.civet'`, `"lib/x.js"`, `'mjs-framework/ws'`, `'https://cdn.example.test/lib.js'`]) {
+  it('cibles normales inchangées : ./a.civet, "lib/x.js", modularjs-framework/ws, https://…', async () => {
+    for (const cible of [`'./a.civet'`, `"lib/x.js"`, `'modularjs-framework/ws'`, `'https://cdn.example.test/lib.js'`]) {
       const src = `@import Foo ${cible}\n<div>x</div>`
       const { output } = await transpile(src, { moduleName: 'probeb21c' })
       assert.match(output, /import \{ Foo \} from/)

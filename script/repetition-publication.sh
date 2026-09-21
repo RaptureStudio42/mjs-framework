@@ -45,7 +45,7 @@ step "build:self" npm --prefix "$ROOT_DIR" run build:self
 echo "▶ npm pack"
 step "npm pack → $PACK_DIR" npm --prefix "$ROOT_DIR" pack --pack-destination "$PACK_DIR"
 
-TARBALL="$(ls "$PACK_DIR"/matrixfr-mjs-framework-*.tgz 2> /dev/null | head -n1)"
+TARBALL="$(ls "$PACK_DIR"/modularjs-framework-*.tgz 2> /dev/null | head -n1)"
 if [ -z "$TARBALL" ]; then
   echo "✗ tarball introuvable après npm pack"
   exit 1
@@ -70,8 +70,8 @@ check "bundle compilé" "$PROJECT_DIR/public/modularjs/bundle.js"
 
 # --- 5. Résolution des exports du package.json ---
 
-step "import('@matrixfr/mjs-framework') résout" node -e "import('@matrixfr/mjs-framework').then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1) })"
-step "import('@matrixfr/mjs-framework/mjs-server') résout" node -e "import('@matrixfr/mjs-framework/mjs-server').then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1) })"
+step "import('modularjs-framework') résout" node -e "import('modularjs-framework').then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1) })"
+step "import('modularjs-framework/mjs-server') résout" node -e "import('modularjs-framework/mjs-server').then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1) })"
 
 echo ""
 echo "✓ répétition générale VERTE de bout en bout"

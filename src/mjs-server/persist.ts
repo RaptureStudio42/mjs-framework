@@ -34,7 +34,7 @@
 // partie du stockage — elle doit revivre au prochain boot via load(), cf. matchmaking.ts `stopping`).
 // app.stop() (index.ts) : stop() = rafale finale des débounces en attente PUIS flush() adaptateur.
 //
-//   import { mjsServer, MemoryPersistAdapter } from 'mjs-framework/mjs-server'
+//   import { mjsServer, MemoryPersistAdapter } from 'modularjs-framework/mjs-server'
 //   app = mjsServer({ persist: { adaptateur: new MemoryPersistAdapter(), debounce: 150 } })
 
 import type { MjsWsLogFn } from '../mjs-ws/index.js'

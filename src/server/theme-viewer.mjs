@@ -7,13 +7,70 @@ COLOR_RE := new RegExp('^#|^rgb\\(|^hsl\\(|^oklch\\(|^color\\(', 'i')
 
 looksLikeColor = (v) -> COLOR_RE.test(v)
 
+MOTIFS := {
+  introuvable:        'déclaration introuvable dans le fichier — reconstruire ?'
+  ambigu:             'plusieurs déclarations dans ce fichier, ligne indécidable'
+  inchange:           'déjà à cette couleur'
+  'hors-projet':      'fichier hors du projet (framework, lien symbolique)'
+  'racine-inconnue':  'racine du projet inconnue du serveur'
+  'valeur-refusee':   'valeur refusée par le crible'
+  'nom-refuse':       'nom de variable refusé'
+  'fichier-manquant': 'aucun fichier déclarant connu'
+}
+
 $vars = []
 $query = ''
 $kind = 'all'
 $expanded = {}
+$live = false
+$clients = 0
+$edits = {}
+$write = false
+$etats = {}
+
+versHex = (v) ->
+  s := (v ?? '').trim()
+  court := s.match(/^#([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])$/)
+  return '#' + court[1] + court[1] + court[2] + court[2] + court[3] + court[3] if court
+  long := s.match(/^#([0-9A-Fa-f]{6})(?:[0-9A-Fa-f]{2})?$/)
+  return '#' + long[1].toLowerCase() if long
+  canaux := s.match(/^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/)
+  return '' unless canaux
+  '#' + [1, 2, 3].map((i) -> Math.min(255, +canaux[i]).toString(16).padStart(2, '0')).join('')
+
+envoyer = (name, value) ->
+  fetch('/__mjs/theme/edit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vars: { [name]: value } }) }).then((r) -> r.json()).then((d) -> $clients = d.clients).catch((err) -> µ.error(err))
+
+cibleEcriture = (themeVar) ->
+  themeVar.declarations.find((d) -> d.kind != 'framework') ?? themeVar.declarations[0]
+
+enregistrer = (themeVar) ->
+  d := cibleEcriture(themeVar)
+  return unless d
+  corps := { name: themeVar.name, value: $edits[themeVar.name], file: d.file, line: d.line }
+  fetch('/__mjs/theme/write', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) }).then((r) -> r.json()).then((res) -> $etats[themeVar.name] = { ok: res.written, texte: if res.written then 'écrit dans ' + res.file + ':' + res.line else (MOTIFS[res.reason] ?? res.reason) }).catch((err) -> µ.error(err))
+
+modifier = (themeVar, value) ->
+  $edits[themeVar.name] = value
+  envoyer(themeVar.name, value)
+  enregistrer(themeVar) if $write
+
+retablir = (name) ->
+  delete $edits[name]
+  delete $etats[name]
+  envoyer(name, '')
+
+retablirTout = ->
+  for name of $edits
+    envoyer(name, '')
+  $edits = {}
+  $etats = {}
 
 refresh = ->
   fetch('/__mjs/theme.json').then((r) -> r.json()).then((data) -> $vars = Object.keys(data ?? {}).sort().map((name) -> ({ name, declarations: data[name].declarations, readBy: data[name].readBy }))).catch((err) -> µ.error(err))
+
+etatDirect = ->
+  fetch('/__mjs/theme/edit').then((r) -> r.json()).then((d) -> $live = d.live; $clients = d.clients).catch(-> $live = false)
 
 toggle = (name) ->
   $expanded[name] = not $expanded[name]
@@ -28,8 +85,11 @@ $filtered = $vars.filter (themeVar) -> ($kind == 'all' or themeVar.declarations.
 $countRead = $vars.filter((themeVar) -> themeVar.readBy.length > 0).length
 $countDecl = $vars.reduce((n, themeVar) -> n + themeVar.declarations.length, 0)
 
+$nbEdits = Object.keys($edits).length
+
 µmount ->
   refresh()
+  etatDirect()
 </script>
 
 <div class="atelier">
@@ -40,6 +100,28 @@ $countDecl = $vars.reduce((n, themeVar) -> n + themeVar.declarations.length, 0)
       <span class="stat">{$countDecl} déclarations</span>
       <span class="stat">{$countRead} variables lues par au moins un composant</span>
     </div>
+  </div>
+
+  <div class="direct">
+    {if $live}
+      <span class="temoin"></span>
+      <span class="etat">Aperçu en direct — {$clients} page{if $clients > 1}s{end} à l'écoute</span>
+      <label class="bascule">
+        <input type="checkbox" checked=!{$write}>
+        <span>Enregistrer dans le source</span>
+      </label>
+      {if $write}
+        <span class="precision ecrit">Chaque couleur choisie part dans le fichier qui la déclare. « Rétablir » ne défait que l'aperçu : ce qui est écrit reste écrit.</span>
+      {else}
+        <span class="precision">Rien n'est écrit sur le disque : fermez l'onglet et tout revient.</span>
+      {end}
+    {else}
+      <span class="temoin hors"></span>
+      <span class="etat hors">Lecture seule — l'aperçu en direct demande « mjs dev ».</span>
+    {end}
+    {if $nbEdits > 0}
+      <button class="retablir-tout" @click={retablirTout()}>Rétablir les {$nbEdits} couleurs modifiées</button>
+    {end}
   </div>
 
   {if $vars.length == 0}
@@ -63,10 +145,22 @@ $countDecl = $vars.reduce((n, themeVar) -> n + themeVar.declarations.length, 0)
         {for themeVar in $filtered by name}
           {const first = themeVar.declarations[0]}
           <div class="variable" role="button" tabindex="0" @click={toggle(themeVar.name)} @keydown={toggleKey(e, themeVar.name)}>
+            {const courante = $edits[themeVar.name] ?? first.value}
+            {const hex = $live ? versHex(courante) : ''}
             <div class="ligne">
-              {if looksLikeColor(first.value)}<span class="pastille" @style.background={first.value}></span>{end}
+              {if hex}
+                <input class="pastille vive" type="color" aria-label="Couleur de {themeVar.name}" value={hex} @click.stop={} @input.stop={modifier(themeVar, e.target.value)}>
+              {else}
+                {if looksLikeColor(courante)}<span class="pastille" @style.background={courante}></span>{end}
+              {end}
               <span class="nom">{themeVar.name}</span>
-              <span class="valeur">{first.value}</span>
+              <span class="valeur">{courante}</span>
+              {if $edits[themeVar.name]}
+                <button class="retablir" aria-label="Rétablir {themeVar.name}" @click.stop={retablir(themeVar.name)}>rétablir</button>
+              {end}
+              {if $etats[themeVar.name]}
+                <span class="ecriture" @class{$etats[themeVar.name].ok == false}="rate">{$etats[themeVar.name].texte}</span>
+              {end}
               <span class="badge badge-{first.kind}">{formatKind(first.kind)}</span>
               <span class="declarant">{first.declaredBy}</span>
               <span class="lecteurs">{themeVar.readBy.length} lecteur{if themeVar.readBy.length > 1}s{end}</span>
@@ -75,6 +169,10 @@ $countDecl = $vars.reduce((n, themeVar) -> n + themeVar.declarations.length, 0)
               <div class="detail">
                 {if themeVar.declarations.length > 1}
                   <p class="cascade">{themeVar.declarations.length} déclarations — la cascade s'applique, le plus proche gagne.</p>
+                {end}
+                {if $write}
+                  {const c = cibleEcriture(themeVar)}
+                  <p class="cible">Enregistrement vers {c.file}:{c.line}</p>
                 {end}
                 <div class="declarations">
                   {for d in themeVar.declarations}
@@ -193,6 +291,74 @@ $countDecl = $vars.reduce((n, themeVar) -> n + themeVar.declarations.length, 0)
     border-radius: 50%
     border: 1px solid rgba(255, 255, 255, 0.3)
     flex-shrink: 0
+  input.pastille.vive
+    width: 18px
+    height: 18px
+    padding: 0
+    cursor: pointer
+    background: none
+    &::-webkit-color-swatch-wrapper
+      padding: 0
+    &::-webkit-color-swatch
+      border: none
+      border-radius: 50%
+    &::-moz-color-swatch
+      border: none
+      border-radius: 50%
+  .direct
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 0.6rem
+    margin-bottom: 1.25rem
+    padding: 0.5rem 0.8rem
+    background: #1b1f29
+    border: 1px solid #2a2f3c
+    border-radius: 8px
+  .temoin
+    width: 8px
+    height: 8px
+    border-radius: 50%
+    background: #3fb950
+    flex-shrink: 0
+  .temoin.hors
+    background: #6b7280
+  .etat
+    color: #e4e6ec
+    font-size: 0.85rem
+  .etat.hors
+    color: #8a8f9c
+  .precision
+    color: #6b7280
+    font-size: 0.8rem
+  .precision.ecrit
+    color: #d8b34a
+  .bascule
+    display: inline-flex
+    align-items: center
+    gap: 0.35rem
+    color: #e4e6ec
+    font-size: 0.8rem
+    cursor: pointer
+    user-select: none
+  .bascule input
+    accent-color: #3fb950
+    cursor: pointer
+  .retablir-tout
+    margin-left: auto
+    font-size: 0.8rem
+    padding: 0.3rem 0.6rem
+  .retablir
+    font-size: 0.7rem
+    padding: 0.05rem 0.4rem
+    border-radius: 4px
+    flex-shrink: 0
+  .ecriture
+    color: #3fb950
+    font-size: 0.75rem
+    font-family: ui-monospace, monospace
+  .ecriture.rate
+    color: #e5714d
   .nom
     font-family: ui-monospace, monospace
     font-weight: 600
@@ -235,6 +401,11 @@ $countDecl = $vars.reduce((n, themeVar) -> n + themeVar.declarations.length, 0)
     margin: 0 0 0.5rem
     color: #d8b34a
     font-size: 0.8rem
+  .cible
+    margin: 0 0 0.5rem
+    color: #8a8f9c
+    font-size: 0.8rem
+    font-family: ui-monospace, monospace
   .declarations
     display: flex
     flex-direction: column

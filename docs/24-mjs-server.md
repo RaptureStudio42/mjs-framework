@@ -1,10 +1,10 @@
 # 24 · MJS-Server — la salle de partie (au-dessus de MJS-WS)
 
-> **Module optionnel.** MJS-Server compose une couche « salle de partie » — appariement, sièges, tour par tour, vue par joueur — **par-dessus** [23 · MJS-WS](23-mjs-ws.md), sans le modifier. Tant que tu n'importes pas `mjs-framework/mjs-server`, son coût est **nul** : zéro octet, zéro `Map`, zéro minuterie.
+> **Module optionnel.** MJS-Server compose une couche « salle de partie » — appariement, sièges, tour par tour, vue par joueur — **par-dessus** [23 · MJS-WS](23-mjs-ws.md), sans le modifier. Tant que tu n'importes pas `modularjs-framework/mjs-server`, son coût est **nul** : zéro octet, zéro `Map`, zéro minuterie.
 
 ```civet
 // serveur — dialecte Civet des composants (§12 doc 23)
-import { mjsServer } from 'mjs-framework/mjs-server'
+import { mjsServer } from 'modularjs-framework/mjs-server'
 
 app = mjsServer({ auth: (hello)-> { id: hello.auth?.id } })
 
@@ -63,7 +63,7 @@ C'est tout ce qu'il faut pour une salle de partie tour par tour complète — ap
 
 Deux conséquences directes de cette composition :
 
-- **Optionnel, coût nul si absent.** Ne pas importer `mjs-framework/mjs-server` = zéro impact sur une app MJS-WS classique (chat, présence, flux…).
+- **Optionnel, coût nul si absent.** Ne pas importer `modularjs-framework/mjs-server` = zéro impact sur une app MJS-WS classique (chat, présence, flux…).
 - **Magique pour l'appli.** L'appli hôte ne voit jamais une trame `µgame:*` — le préfixe est **réservé** (`app.serve('µgame:x', …)` ou `app.on('µgame:x', …)` lèvent une erreur claire) —, seulement `app.game(type, def)` côté serveur et `sock.game(type)` côté client. Toute la plomberie (file d'attente, sièges, diffusion groupée par microtâche…) reste interne.
 
 Le socle de MJS-Server reste **tour par tour événementiel** — un coup, une réaction, une diffusion, cf. [§4](#les-coups). Pour un monde qui bouge en continu (une arène, un jeu d'esquive, un espace partagé…), le **mode action** (`def.tick > 0`) ajoute une boucle à fréquence fixe, des intentions et des deltas ([§10](#mode-action), [§11](#deltas)), plus une zone d'intérêt optionnelle ([§12](#zones-interet)). Dans les deux modes, MJS-Server reste un **assemblage** de mécaniques **réseau** (appariement, sièges, diffusion) — jamais un moteur physique : détection de collision, pathfinding, autorité anti-triche fine restent entièrement à ta charge dans `def.simulate`/`def.moves`.
@@ -146,7 +146,7 @@ Rechargement à chaud et arrêt propre : **même** comportement que `mjs ws` ([2
 Le fichier d'entry ci-dessus reste un module ordinaire — rien n'empêche de construire et d'écouter l'app toi-même, sans passer par `mjs serveur` (utile en dehors du CLI, ou pour composer avec un serveur HTTP existant) :
 
 ```civet
-import { mjsServer } from 'mjs-framework/mjs-server'
+import { mjsServer } from 'modularjs-framework/mjs-server'
 
 app = mjsServer({ auth: (hello)-> { id: hello.auth?.id } })
 app.game('morpion', { seats: 2, state: (game)-> { grille: Array(9).fill(null) }, moves: { … } })
@@ -412,7 +412,7 @@ et `game.move()` typés, sans rien changer au protocole `µgame:*`.
 
 ```ts
 // contrat.ts — partagé entre ws.server.mjs et le composant qui affiche le morpion
-import type { MjsServerGameContract } from 'mjs-framework/mjs-server'
+import type { MjsServerGameContract } from 'modularjs-framework/mjs-server'
 
 export interface MorpionContrat extends MjsServerGameContract {
   view: { grille: Array<string | null> }
@@ -427,7 +427,7 @@ Côté composant — `sock.game()` reste identique, `asTypedGame` ne fait que ca
 ```civet
 <script>
   import type { MorpionContrat } from '../contrat.ts'
-  import { asTypedGame } from 'mjs-framework/mjs-server'
+  import { asTypedGame } from 'modularjs-framework/mjs-server'
 
   game = asTypedGame<MorpionContrat>(sock.game('morpion'))
 </script>
@@ -491,7 +491,7 @@ Aucun adaptateur ne confie le typage de `data` au moteur de stockage : il encode
 La paire d'encodage est exportée — un adaptateur **maison** utilise exactement la même que les nôtres, et hérite du jour où l'un des trois devra traiter un cas particulier (valeur cyclique, `Date`, très gros payload) :
 
 ```ts
-import { mjsServer, encodeSnapshot, decodeSnapshot } from 'mjs-framework/mjs-server'
+import { mjsServer, encodeSnapshot, decodeSnapshot } from 'modularjs-framework/mjs-server'
 
 const store = new Map<string, string>()                                                       // que du TEXTE
 const app   = mjsServer({ persist: {
@@ -537,7 +537,7 @@ La vérification ci-dessus suit la **même** recette que le pont MJS-WS (en-têt
 ### Redis et SQL
 
 ```civet
-import { mjsServer, RedisPersistAdapter } from 'mjs-framework/mjs-server'
+import { mjsServer, RedisPersistAdapter } from 'modularjs-framework/mjs-server'
 
 app = mjsServer({ persist: new RedisPersistAdapter({ url: 'redis://localhost:6379', prefix: 'mjs-server:' }) })
 ```
@@ -549,7 +549,7 @@ app = mjsServer({ persist: new RedisPersistAdapter({ url: 'redis://localhost:637
 ```js
 // mysql2 — dialecte '?' (paramètres positionnels), défaut
 import mysql from 'mysql2'
-import { mjsServer, SqlPersistAdapter } from 'mjs-framework/mjs-server'
+import { mjsServer, SqlPersistAdapter } from 'modularjs-framework/mjs-server'
 
 const pool  = mysql.createPool({ host: '…', database: '…' }).promise()
 const query = async (sql, params) => { const [rows] = await pool.query(sql, params); return rows }
@@ -560,7 +560,7 @@ app = mjsServer({ persist: new SqlPersistAdapter({ query, dialect: '?' }) })
 ```js
 // pg — dialecte '$' (paramètres numérotés $1 $2 …)
 import pg from 'pg'
-import { mjsServer, SqlPersistAdapter } from 'mjs-framework/mjs-server'
+import { mjsServer, SqlPersistAdapter } from 'modularjs-framework/mjs-server'
 
 const client = new pg.Client({ connectionString: '…' })
 await client.connect()
@@ -637,7 +637,7 @@ Côté client, le module runtime s'appelle **`game`** (à côté de `socket`, `r
 Sélectionner `'game'` sans `'socket'` compile quand même (le bundler avertit : `sock.game` restera `undefined`) — `'game'` patche `MjsSocket.prototype`, il lui faut donc le module `'socket'` déjà présent. Le défaut `"runtime": "all"` (pas de config du tout) inclut les deux, comme le reste du runtime.
 
 ```civet
-import { mjsServer } from 'mjs-framework/mjs-server'
+import { mjsServer } from 'modularjs-framework/mjs-server'
 ```
 
 ---

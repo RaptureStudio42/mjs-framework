@@ -11,12 +11,13 @@
 // le browser charge directement via `<script src="bundle.js">`.
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { readFileSync, existsSync, statSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs'
 import { resolve, join, extname } from 'node:path'
 import { normalizeUrlPrefix, type MjsConfig } from '../bundler/config.js'
 import { HMRServer, hmrClientSnippet, isTrustedDevOrigin } from './hmr.js'
 import { shell, isRealPathWithin, MIME } from './render-server.js'
 import { buildSsrHead } from './ssr-head.js'
+import { rewriteThemeValue } from './theme-write.js'
 import { readBuildVersion } from './build-version.js'
 import { getViewerScript, isViewerAllowed, viewerScriptElement, warnIfJournalViewerOpenInProd, isProdEnv, JOURNAL_VIEWER, THEME_VIEWER } from './viewer-page.js'
 import type { Journal, RecordServerFn } from './journal.js'
@@ -34,6 +35,23 @@ import { t } from '../messages/index.js'
 // `pathPrefix`) : fonctionne quelle que soit la configuration réelle du projet
 // (manifestPath externe, urlPrefix custom…), cf. renderFallback ci-dessous.
 const RENDER_BUNDLE_PATH = '/__mjs/bundle.js'
+
+// Crible des variables de thème éditables en direct (POST /__mjs/theme/edit) — LISTE BLANCHE
+// de FORMES, pas seulement de caractères. Le nom suit VAR_ID_RE du transpiler (tirets internes
+// admis, cf. transpiler/style-vars.ts).
+//
+// La valeur doit ÊTRE une couleur : `#rgb`/`#rrggbb`/`#rrggbbaa`, un appel à l'une des fonctions
+// couleur nommées ci-dessous, ou un mot-clé nu (`red`, `transparent`, `currentColor`). Un simple
+// crible de caractères ne suffisait pas : il admettait `url(//exemple.test/x)`, qui n'est pas
+// une couleur mais déclenche une requête réseau dès qu'une variable sert d'image de fond — une
+// page tierce peut POSTer ici en cross-origin sans lire la réponse (cf. l'avertissement d'origine
+// en tête de hmr.ts). `url` n'est pas dans la liste, donc la forme entière est refusée.
+const THEME_NAME_RE  = /^[A-Za-z_][A-Za-z0-9_-]*$/
+const THEME_FN       = 'rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|color-mix|var'
+const THEME_VALUE_RE = new RegExp('^(?:#[0-9A-Fa-f]{3,8}|(?:' + THEME_FN + ')\\([A-Za-z0-9 ,.%#()\\/_-]{0,56}\\)|[A-Za-z][A-Za-z-]{0,31})$')
+/** Plafond de longueur, tenu à part du motif : une valeur légale mais absurdement longue
+ *  n'a rien à faire dans une feuille de style, et un motif borné se relit mal. */
+const THEME_VALUE_MAX = 64
 
 export interface ServerOpts {
   /** Répertoire à servir. */
@@ -275,6 +293,46 @@ export class StaticServer {
     const origin = req.headers.origin
     if (isTrustedDevOrigin(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin ?? '*')
+    }
+
+    // Aperçu de thème EN DIRECT (atelier /__mjs/theme) — deux routes, traitées ICI pour la
+    // même raison que le journal juste en dessous : avant la porte GET/HEAD (le POST lui est
+    // propre) et avant la barrière `/__mjs/…` des requêtes mutantes, qui sinon rendrait 404 sur
+    // ce POST. Même garde de production que l'atelier : 404, jamais 403.
+    //   GET  → le direct est-il possible ici, et combien de pages écoutent
+    //   POST → diffuse les couleurs aux pages ouvertes. RIEN n'est écrit sur le disque : un
+    //          aperçu ne touche jamais le source (cadrage 21/09), le canal HMR suffit.
+    if (url === '/__mjs/theme/edit') {
+      if (isProdEnv(this.env)) { res.statusCode = 404; res.end('Not Found'); return }
+      const varPrefix = this.config?.varPrefix ?? 'mjs'
+      if (req.method === 'GET') {
+        res.statusCode = 200
+        res.setHeader('Content-Type', 'application/json; charset=utf-8')
+        // `clients` sert à l'atelier pour distinguer « rien ne bouge » de « aucune page
+        // ouverte » — deux pannes identiques à l'écran, deux causes opposées.
+        res.end(JSON.stringify({ live: !!this.hmr, clients: this.hmr?.clientCount ?? 0, varPrefix }))
+        return
+      }
+      if (req.method === 'POST') { await this.serveThemeEditPost(req, res, varPrefix); return }
+      res.statusCode = 405
+      res.end('Method Not Allowed')
+      return
+    }
+
+    // POST /__mjs/theme/write — l'interrupteur « enregistrer » de l'atelier est allumé : la
+    // couleur ne se contente plus d'être diffusée aux pages ouvertes, elle est ÉCRITE dans le
+    // fichier qui la déclare, à sa ligne — ce que tu vois devient ce qui est. Route SÉPARÉE
+    // de /edit, et plus sévère : /edit parle à des pages déjà
+    // ouvertes, celle-ci touche le code source.
+    if (url === '/__mjs/theme/write') {
+      if (isProdEnv(this.env)) { res.statusCode = 404; res.end('Not Found'); return }
+      if (req.method !== 'POST') { res.statusCode = 405; res.end('Method Not Allowed'); return }
+      // origine vérifiée ICI alors que /edit s'en passe : n'importe quelle page du navigateur
+      // peut POSTer en cross-origin sans lire la réponse (cf. l'en-tête de hmr.ts) — sur une
+      // diffusion ça repeint un onglet de dev, ici ça écrirait dans le code du projet
+      if (!isTrustedDevOrigin(req.headers.origin)) { res.statusCode = 403; res.end('Forbidden'); return }
+      await this.serveThemeWritePost(req, res)
+      return
     }
 
     // Journal d'erreurs 3 étages, mêmes 4 routes que `mjs serve` (cf. render-server.ts
@@ -552,6 +610,128 @@ export class StaticServer {
     } else {
       res.end(body)
     }
+  }
+
+  // POST /__mjs/theme/edit — l'atelier envoie `{ vars: { accent: '#ff0000' } }` (noms NUS, tels
+  // que le registre `.mjs-theme-vars.json` les porte), on diffuse `--<varPrefix>-<nom>` à toutes
+  // les pages ouvertes. Le préfixe est appliqué ICI : le serveur est le seul des trois à connaître
+  // `varPrefix` sans le deviner (config chargée par le CLI).
+  //
+  // CRIBLE PAR LISTE BLANCHE, jamais par liste noire. Nom et valeur finissent TELS QUELS dans le
+  // texte d'une feuille de style côté page (`:root{--mjs-x:VALEUR}`) : une valeur portant `;` ou
+  // `}` sortirait de la déclaration et écrirait des règles arbitraires. Et le canal de sortie est
+  // le WebSocket HMR, dont l'en-tête de hmr.ts rappelle qu'il est joignable par n'importe quelle
+  // page du navigateur. Une entrée refusée ne fait pas tomber les autres : elle est comptée et
+  // rendue à l'appelant, qui l'affiche — un refus muet ressemblerait à une couleur sans effet.
+  /** Corps JSON d'un POST d'atelier : borné à 64 Kio, rendu en objet simple. `undefined` =
+   *  la réponse d'erreur est DÉJÀ partie (413 ou 400), l'appelant n'a plus qu'à sortir. */
+  private async readJsonBody(req: IncomingMessage, res: ServerResponse): Promise<Record<string, unknown> | undefined> {
+    const chunks: Buffer[] = []
+    let total = 0
+    let rejected = false
+    await new Promise<void>((done) => {
+      req.on('data', (chunk: Buffer) => {
+        if (rejected) return
+        total += chunk.length
+        if (total > 65_536) {
+          rejected = true
+          res.statusCode = 413
+          res.setHeader('Connection', 'close')
+          res.end('Payload Too Large')
+          req.destroy()
+          done(); return
+        }
+        chunks.push(chunk)
+      })
+      req.on('end', () => done())
+      req.on('error', () => done())
+    })
+    if (rejected) return undefined
+    let payload: unknown
+    try {
+      payload = JSON.parse(Buffer.concat(chunks).toString('utf-8'))
+    } catch {
+      res.statusCode = 400; res.end('Bad Request'); return undefined
+    }
+    if (!isPlainObject(payload)) { res.statusCode = 400; res.end('Bad Request'); return undefined }
+    return payload as Record<string, unknown>
+  }
+
+  private async serveThemeEditPost(req: IncomingMessage, res: ServerResponse, varPrefix: string): Promise<void> {
+    const payload = await this.readJsonBody(req, res)
+    if (payload === undefined) return
+    const vars = payload.vars
+    if (!isPlainObject(vars)) { res.statusCode = 400; res.end('Bad Request'); return }
+
+    const retenues: Record<string, string> = {}
+    const refusees: string[] = []
+    for (const [nom, valeur] of Object.entries(vars as Record<string, unknown>)) {
+      // '' = retrait de la surcharge (retour à la valeur du source) : valeur LÉGALE, elle
+      // traverse le crible de forme qui, lui, exige au moins un caractère.
+      if (typeof valeur !== 'string' || valeur.length > THEME_VALUE_MAX || !THEME_NAME_RE.test(nom) || (valeur !== '' && !THEME_VALUE_RE.test(valeur))) {
+        refusees.push(nom)
+        continue
+      }
+      retenues['--' + varPrefix + '-' + nom] = valeur
+    }
+
+    // `this.hmr` absent = serveur monté sans HMR : l'aperçu n'a aucun canal, on le DIT (200 avec
+    // `live: false`) plutôt que de rendre un succès sur une diffusion qui n'a pas eu lieu.
+    const nbPages = this.hmr?.clientCount ?? 0
+    if (this.hmr && Object.keys(retenues).length > 0) this.hmr.notifyThemeVars(retenues)
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.end(JSON.stringify({ live: !!this.hmr, clients: nbPages, applied: Object.keys(retenues).length, rejected: refusees }))
+  }
+
+  // POST /__mjs/theme/write — `{ name, value, file, line }`. `file` et `line` viennent du
+  // registre `.mjs-theme-vars.json` que l'atelier a DÉJÀ lu : c'est lui qui sait quelle
+  // déclaration la pastille éditait, une variable en ayant souvent plusieurs (un thème clair et
+  // un thème sombre, deux composants qui la posent). Le serveur ne s'y fie pas pour autant : le
+  // chemin est ramené sous la racine du projet, et la ligne revérifiée contre le fichier réel
+  // (cf. theme-write.ts, qui refuse plutôt que d'écrire au jugé).
+  //
+  // Un refus sort en 200 avec son motif, comme /edit : ce n'est pas une panne du serveur mais un
+  // fait sur le source, que l'atelier doit AFFICHER. Seules les requêtes malformées font 4xx.
+  private async serveThemeWritePost(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const payload = await this.readJsonBody(req, res)
+    if (payload === undefined) return
+    const rendre = (corps: Record<string, unknown>) => {
+      res.statusCode = 200
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.end(JSON.stringify(corps))
+    }
+
+    const name  = payload.name
+    const value = payload.value
+    const file  = payload.file
+    const line  = typeof payload.line === 'number' && Number.isInteger(payload.line) && payload.line > 0 ? payload.line : 0
+
+    // MÊME crible de formes que l'aperçu, pour une raison plus forte encore : la valeur finit
+    // dans une feuille de style DU DÉPÔT, pas seulement dans un onglet de dev. La chaîne vide —
+    // le « rétablir » de l'aperçu — n'a aucun sens ici : on ne devine pas une valeur d'origine.
+    if (typeof name !== 'string' || !THEME_NAME_RE.test(name)) { rendre({ written: false, reason: 'nom-refuse' }); return }
+    if (typeof value !== 'string' || value === '' || value.length > THEME_VALUE_MAX || !THEME_VALUE_RE.test(value)) { rendre({ written: false, reason: 'valeur-refusee' }); return }
+    if (typeof file !== 'string' || file === '') { rendre({ written: false, reason: 'fichier-manquant' }); return }
+    // `mjs dev` connaît la racine du projet (cli.ts la passe toujours) ; un StaticServer monté à
+    // la main n'en a pas — sans elle on ne sait pas contre quoi borner le chemin, donc on ne
+    // touche à rien plutôt que de résoudre depuis le dossier courant du process
+    if (!this.projectRoot) { rendre({ written: false, reason: 'racine-inconnue' }); return }
+
+    const cible = resolve(this.projectRoot, file)
+    // le chemin arrive du navigateur : `../../.ssh/config` et un lien symbolique qui sort du
+    // projet sont deux façons d'en échapper — isRealPathWithin résout les deux avant de comparer
+    if (!existsSync(cible) || !statSync(cible).isFile() || !isRealPathWithin(this.projectRoot, cible)) { rendre({ written: false, reason: 'hors-projet' }); return }
+
+    const varPrefix = this.config?.varPrefix ?? 'mjs'
+    const issue     = rewriteThemeValue(readFileSync(cible, 'utf-8'), name, varPrefix, value, line)
+    if (!issue.ok) { rendre({ written: false, reason: issue.reason, lines: issue.lines, file }); return }
+
+    writeFileSync(cible, issue.source)
+    // AUCUNE diffusion `theme-vars` derrière l'écriture : le watcher voit le fichier changer et
+    // recompile, la page reçoit la vraie couleur par le canal normal. Une surcharge posée en plus
+    // masquerait le résultat réel — et masquerait donc aussi un échec de compilation.
+    rendre({ written: true, file, line: issue.line, before: issue.before, after: issue.after })
   }
 
   // POST /__mjs/errors (étage 2 du journal) : mêmes plafonds/troncatures que `mjs serve`,
