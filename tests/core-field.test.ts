@@ -126,6 +126,22 @@ describe('mjs-field — label lié au champ slotté (for/id)', function () {
     assert.equal(label.getAttribute('for'), 'pseudo-perso')
   })
 
+  it('champ natif enveloppé (icône/affixe) → id/for posés sur le VRAI champ, pas le wrapper', async () => {
+    const HOST = [
+      '<@field name="pseudo" label="Pseudo">',
+      '  <div class="wrap"><input name="pseudo"></div>',
+      '</@field>',
+    ].join('\n')
+    const { hote } = await buildAndMount(HOST)
+    const fieldEl = hote._shadow.querySelector('mjs-field')
+    const wrap = fieldEl.querySelector('.wrap')
+    const input = fieldEl.querySelector('input')
+    const label = fieldEl._shadow.querySelector('label')
+    assert.ok(input.id, 'un id doit avoir été posé sur le champ natif, pas le wrapper')
+    assert.equal(label.getAttribute('for'), input.id, 'le for du label doit référencer le champ natif')
+    assert.equal(wrap.id, '', 'le wrapper ne doit porter aucun id généré')
+  })
+
   it('pas de label fourni → aucun <label> rendu', async () => {
     const HOST = [
       '<@field name="x">',

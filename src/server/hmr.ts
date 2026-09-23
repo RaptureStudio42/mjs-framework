@@ -56,6 +56,19 @@ export function isTrustedDevOrigin(origin: string | string[] | undefined): boole
   return LOCAL_ORIGIN_RE.test(v)
 }
 
+/** Version STRICTE, pour les routes qui ÉCRIVENT (pas seulement CORS/diffusion) : l'ABSENCE
+ * d'Origin n'est PAS traitée comme une confiance par défaut, contrairement à isTrustedDevOrigin
+ * ci-dessus. Un navigateur envoie TOUJOURS Origin sur une requête cross-origin (fetch/XHR/WS) —
+ * seul un client qui n'EST PAS un navigateur (curl, un script, une autre machine si `dev.host`
+ * est ouvert au réseau) peut l'omettre, et c'est justement le cas à ne plus laisser passer sur
+ * une route qui écrit dans le code source du projet (trouvé 23/09 : `dev.host=0.0.0.0`, cas réel
+ * documenté pour tester sur mobile, ouvrait l'écriture à tout le réseau local sans vérification). */
+export function hasTrustedBrowserOrigin(origin: string | string[] | undefined): boolean {
+  if (origin === undefined) return false
+  const v = Array.isArray(origin) ? origin[0] : origin
+  return LOCAL_ORIGIN_RE.test(v)
+}
+
 export class HMRServer {
   wss: WebSocketServer
   clients: Set<WebSocket>

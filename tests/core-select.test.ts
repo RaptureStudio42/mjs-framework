@@ -114,6 +114,15 @@ const HOST = `<script>
     <@option value="a">Option A</@option>
   </@select>
 </div>
+
+<div id="sel-wrapped">
+  <@select name="wrapped" placeholder="Choisir">
+    <div class="opt-group">
+      <@option value="fr">France</@option>
+      <@option value="de">Allemagne</@option>
+    </div>
+  </@select>
+</div>
 `
 
 describe('core-select/core-option — comportement runtime (happy-dom, bundler réel)', function () {
@@ -742,6 +751,18 @@ describe('core-select/core-option — comportement runtime (happy-dom, bundler r
       assert.equal(options('sel-search').length, 3)
       assert.equal(sel('sel-search')._shadow.querySelectorAll('.select-option.active').length, 1)
       key(wrapper('sel-search'), 'Escape')
+      await tick()
+    })
+  })
+
+  describe('options nichées dans un wrapper intermédiaire (pas enfants directs du <slot>)', () => {
+    it('un <div> entre <@select> et les <@option> : les options sont quand même détectées (descendants du slot assigné, pas seulement enfants directs)', async () => {
+      click(btn('sel-wrapped'))
+      await tick()
+      assert.equal(options('sel-wrapped').length, 2, 'les <@option> nichées dans le <div class="opt-group"> doivent être rendues')
+      assert.match(sel('sel-wrapped')._shadow.querySelector('.select-panel').textContent, /France/)
+      assert.match(sel('sel-wrapped')._shadow.querySelector('.select-panel').textContent, /Allemagne/)
+      key(wrapper('sel-wrapped'), 'Escape')
       await tick()
     })
   })

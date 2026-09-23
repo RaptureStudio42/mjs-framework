@@ -34,7 +34,10 @@ function projet(prefix: string, fichiers: Record<string, string>, opts: Record<s
   return { root, server }
 }
 
-async function ecrire(port: number, corps: Record<string, unknown>, entetes: Record<string, string> = {}) {
+// Origin locale PAR DÉFAUT : une vraie page de l'atelier, dans un navigateur, en envoie
+// toujours une valide — seuls les tests qui exercent SPÉCIFIQUEMENT la garde d'origine
+// (absente ou étrangère) l'écrasent explicitement via `entetes`.
+async function ecrire(port: number, corps: Record<string, unknown>, entetes: Record<string, string> = { Origin: 'http://127.0.0.1' }) {
   const res = await fetch(`http://127.0.0.1:${port}/__mjs/theme/write`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...entetes },
@@ -193,6 +196,74 @@ describe('POST /__mjs/theme/write — enregistrement dans le source', () => {
       const { status } = await ecrire(portDe(server), { name: 'accent', value: '#ff0000', file: 'src/carte.mjs', line: 1 }, { Origin: 'https://exemple.test' })
       assert.equal(status, 403)
       assert.equal(readFileSync(join(root, 'src/carte.mjs'), 'utf-8'), '  $$accent: #3b82f6\n')
+    } finally {
+      await server.stop()
+    }
+  })
+
+  it('une requête SANS EN-TÊTE Origin du tout ne peut pas écrire non plus (trouvé 23/09)', async function () {
+    this.timeout(15000)
+    // un navigateur envoie TOUJOURS Origin sur une requête cross-origin (fetch/XHR) — seul un
+    // client qui n'est PAS un navigateur (curl, un autre process, une autre machine si dev.host
+    // est ouvert au réseau) peut l'omettre. AVANT le fix, isTrustedDevOrigin(undefined) rendait
+    // true (pensé pour la commodité d'outillage local), ce qui revenait à laisser N'IMPORTE QUEL
+    // client sans Origin écrire dans le code source sans la moindre vérification.
+    const { root, server } = projet('theme-write-sans-origine', { 'src/carte.mjs': '  $$accent: #3b82f6\n' })
+    await server.start()
+    try {
+      const { status } = await ecrire(portDe(server), { name: 'accent', value: '#ff0000', file: 'src/carte.mjs', line: 1 }, {})
+      assert.equal(status, 403)
+      assert.equal(readFileSync(join(root, 'src/carte.mjs'), 'utf-8'), '  $$accent: #3b82f6\n')
+    } finally {
+      await server.stop()
+    }
+  })
+
+  it('un url() NICHÉ dans une fonction admise est refusé, pas seulement en tête (trouvé 23/09)', async function () {
+    this.timeout(15000)
+    // THEME_VALUE_RE admet des parenthèses/lettres à l'intérieur d'un var()/color-mix() pour
+    // permettre la composition légitime (var(--a, var(--b))) — mais la même ouverture laisse
+    // n'importe quel nom de fonction s'y nicher, y compris url(), qui déclenche une requête
+    // réseau dès que la variable sert d'image de fond. Un url() EN TÊTE était déjà refusé
+    // (cf. plus haut) ; celui-ci ne l'était pas.
+    const { root, server } = projet('theme-write-url-niche', { 'src/carte.mjs': '  $$accent: #3b82f6\n' })
+    await server.start()
+    try {
+      const port = portDe(server)
+      const pieges = [
+        'var(--x,url(//exemple.test/a))',
+        'color-mix(in srgb, url(//exemple.test/a) 50%, red)',
+        'var(--a,var(--b,url(//exemple.test/a)))',
+        'var(--x,URL(//exemple.test/a))',
+      ]
+      for (const value of pieges) {
+        const { corps } = await ecrire(port, { name: 'accent', value, file: 'src/carte.mjs', line: 1 })
+        assert.equal(corps.written, false, `refusée : ${value}`)
+        assert.equal(corps.reason, 'valeur-refusee')
+      }
+      assert.equal(readFileSync(join(root, 'src/carte.mjs'), 'utf-8'), '  $$accent: #3b82f6\n')
+    } finally {
+      await server.stop()
+    }
+  })
+
+  it('deux écritures QUASI SIMULTANÉES sur le MÊME fichier (2 variables) n\'en perdent aucune', async function () {
+    this.timeout(15000)
+    const { root, server } = projet('theme-write-concurrent', {
+      'src/carte.mjs': '<theme>\n  $$accent: #3b82f6\n  $$fg: #111111\n</theme>\n',
+    })
+    await server.start()
+    try {
+      const port = portDe(server)
+      const [a, b] = await Promise.all([
+        ecrire(port, { name: 'accent', value: '#ff0000', file: 'src/carte.mjs', line: 2 }),
+        ecrire(port, { name: 'fg', value: '#00ff00', file: 'src/carte.mjs', line: 3 }),
+      ])
+      assert.equal(a.corps.written, true)
+      assert.equal(b.corps.written, true)
+      const final = readFileSync(join(root, 'src/carte.mjs'), 'utf-8')
+      assert.match(final, /\$\$accent: #ff0000/, 'la 1re écriture ne doit pas être perdue')
+      assert.match(final, /\$\$fg: #00ff00/, 'la 2e écriture ne doit pas être perdue')
     } finally {
       await server.stop()
     }

@@ -846,7 +846,15 @@ const HASHED_OUTPUT_RE = /-[a-f0-9]{8}\.[a-z0-9]+(?:\.map)?$/
  * un `.css`). L'exempter aurait rendu ces unités-là impurgeables — une feuille retirée du projet
  * laissant son fichier compilé à vie. D'où la famille propre au rendu, `mjs_ssr_style…` : aucune
  * sortie du bundler ne commence par `mjs_ssr`. */
-const SERVER_WRITTEN_RE = /^mjs_(?:ssr_style|ssr_head|viewer_)/
+// `mjs_ssr_head` est un nom FIXE (server/ssr-head.ts) — ancré au tiret du suffixe haché
+// (`mjs_ssr_head-<empreinte8>.ext`) depuis le 23/09/2026 : un asset PROJET nommé par ex.
+// `mjs_ssr_headline-<empreinte8>.png` matchait à tort le préfixe non ancré (trouvé en revue),
+// impurgeable pour toujours même orphelin réel. `mjs_ssr_style_`/`mjs_viewer_` gardent, eux, un
+// suffixe LIBRE (nom de composant/module choisi par le projet) : un ancrage au tiret ne
+// fermerait rien pour eux (le nom réel a lui aussi un tiret avant son empreinte) — la même
+// collision résiduelle existe pour ces deux familles, non fermée, faute d'un marqueur qui les
+// distinguerait d'un nom de projet coïncidant.
+const SERVER_WRITTEN_RE = /^mjs_(?:ssr_style|viewer_)|^mjs_ssr_head-/
 
 // --------------------------------------------------------------------------
 // deriveUrlPrefix : convertit un outputDir système en path URL public.

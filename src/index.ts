@@ -2,7 +2,7 @@
 // (IDE plugins, custom build pipelines, tests, etc.).
 //
 // Usage :
-//   import { transpile, Bundler, Analyzer } from 'modularjs-compiler'
+//   import { transpile, Bundler, Analyzer } from 'modularjs-framework'
 //
 //   // Compile un .mjs en string
 //   const { output, data } = await transpile(source, { moduleName: 'foo' })

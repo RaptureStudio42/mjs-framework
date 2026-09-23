@@ -64,6 +64,32 @@ describe('POST /__mjs/theme/edit — aperçu de thème en direct', () => {
     }
   })
 
+  it('un url() NICHÉ dans une fonction admise est refusé, pas seulement en tête (trouvé 23/09)', async function () {
+    this.timeout(15000)
+    // même trou que /write (cf. theme-write.test.ts) : un url() en tête était déjà refusé, mais
+    // niché dans var()/color-mix() la classe de caractères du crible le laissait passer — ici,
+    // ça diffuse la requête réseau à TOUTES les pages de dev ouvertes plutôt que de l'écrire au
+    // disque, mais le déclenchement réseau est le même.
+    const server = devServer(mjsTmp('theme-edit-url-niche'))
+    await server.start()
+    const port = portDe(server)
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/__mjs/theme/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vars: {
+          a: 'var(--x,url(//exemple.test/a))',
+          b: 'color-mix(in srgb, url(//exemple.test/a) 50%, red)',
+        } }),
+      })
+      const corps = await res.json() as any
+      assert.equal(corps.applied, 0)
+      assert.deepEqual(corps.rejected.sort(), ['a', 'b'])
+    } finally {
+      await server.stop()
+    }
+  })
+
   it('applique le varPrefix de la config, pas un « mjs » codé en dur', async function () {
     this.timeout(15000)
     const server = devServer(mjsTmp('theme-edit-prefixe'), { config: { varPrefix: 'acme' } })

@@ -77,7 +77,15 @@ const MJS_STORE_MUTATORS = new Set(['set', 'add', 'delete', 'clear', 'setTime', 
           // dispatch direct.)
         }
         val = Reflect.get(obj, prop, receiver);
-        if (typeof val === 'object' && val !== null && !isBuiltIn) {
+        // AVANT : `!isBuiltIn` bloquait le wrap récursif dès que le CONTENEUR (obj) était lui-même
+        // une collection native — `store.data.list[0]` rendait donc l'objet BRUT (aucun proxy
+        // interposé), et `store.data.list[0].n = 99` mutait en silence (zéro trap, zéro
+        // notification). Même défaut déjà trouvé et corrigé côté µ.state (mjs_runes.ts, `_wrap` :
+        // « un ÉLÉMENT objet d'une collection restait BRUT ») mais jamais porté ici — trouvé en
+        // revue le 23/09/2026, prouvé par exécution. Le wrap doit s'appliquer à la VALEUR lue,
+        // sans condition sur le conteneur qui la porte (isBuiltIn ne sert plus qu'à choisir le
+        // traitement des MÉTHODES juste en dessous).
+        if (typeof val === 'object' && val !== null) {
           return this._mjs_buildProxy(val, rootKey || prop);
         }
         if (typeof val === 'function') {
@@ -91,6 +99,17 @@ const MJS_STORE_MUTATORS = new Set(['set', 'add', 'delete', 'clear', 'setTime', 
                 µ._mjs_bumpEpoch(obj);
                 this._mjs_notify(rootKey || prop);
                 return result;
+              };
+            }
+            // `Map.get(k)` rend la valeur INTERNE brute par un appel natif, HORS du trap `get`
+            // ci-dessus (l'accès indexé `arr[i]`, lui, PASSE par ce trap et bénéficie déjà du
+            // wrap ci-dessus) : un élément objet stocké dans un Map en ressortait donc TOUJOURS
+            // brut, même après le fix de la lecture indexée. Même défaut que list[0] avant fix,
+            // prouvé par exécution le 23/09/2026.
+            if (prop === 'get' && obj instanceof Map) {
+              return (...args) => {
+                var r = originalMethod(...args);
+                return (typeof r === 'object' && r !== null) ? this._mjs_buildProxy(r, rootKey) : r;
               };
             }
             return originalMethod;

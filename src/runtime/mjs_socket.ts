@@ -809,7 +809,11 @@ MjsSocket.prototype._mjs_applyDelta = function(store, p) {
       if (_mjs_safeKey(p.key)) store[p.key] = merged;
       break;
     case 'remove':
-      delete store[p.key];
+      // cohérence avec 'add'/'update' juste au-dessus (et 'reset') : la clé vient du réseau,
+      // même garde qu'eux — trouvé en revue le 23/09, effet observable limité (delete ne peut
+      // pas écraser le PROTOTYPE comme le ferait un set), corrigé par cohérence avec le contrat
+      // documenté en tête de _mjs_safeKey.
+      if (_mjs_safeKey(p.key)) delete store[p.key];
       break;
   }
 };
@@ -839,7 +843,7 @@ MjsSocket.prototype._mjs_onPresence = function(msg) {
       for (id in peers) { if (_mjs_safeKey(id)) store[id] = peers[id]; }
       break;
     case 'join':  if (_mjs_safeKey(p.id)) store[p.id] = p.meta; break;
-    case 'leave': delete store[p.id]; break;
+    case 'leave': if (_mjs_safeKey(p.id)) delete store[p.id]; break;
   }
 };
 

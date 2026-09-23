@@ -76,6 +76,15 @@ y = 2
     ligne trois
   </@code>
 </div>
+
+<div id="code-lines">
+  <@code><code data-file="app.mjs">
+      <div>ligne un</div>
+      <div>ligne deux</div>
+      <br>
+      <div>ligne trois</div>
+    </code></@code>
+</div>
 `
 
 describe('core-code — comportement runtime (happy-dom, bundler réel)', function () {
@@ -223,6 +232,19 @@ describe('core-code — comportement runtime (happy-dom, bundler réel)', functi
       await tick()
       assert.deepEqual(received, ['ligne une\n  ligne deux indentee\nligne trois'])
       assert.equal(code('code-plain-multi').textContent, 'ligne une\n  ligne deux indentee\nligne trois', 'le DOM léger lui-même est dédenté')
+    })
+
+    it('gabarit en <div> par ligne (éditeur de tuto) : pas de \\n résiduel entre les lignes', async () => {
+      // chaque <div> pose déjà sa propre ligne par le CSS (display:block) ; le texte purement
+      // blanc laissé ENTRE eux par l'indentation du gabarit n'est QUE de l'espacement — un \n
+      // résiduel s'y ajouterait à celui du <div> et doublerait chaque saut de ligne (régression 22/09)
+      // <@slot {i}> (tuto-editor) projette UN SEUL élément <code data-file> déjà structuré :
+      // le texte à dédenter est dans SES enfants, pas dans le wrapper — c'est ce niveau-là qui compte
+      const wrapper = code('code-lines').querySelector('code')
+      assert.ok(wrapper, 'le <code data-file> projeté reste dans le DOM léger')
+      const kids = Array.from(wrapper.childNodes) as any[]
+      const blancsResiduels = kids.filter((n: any) => n.nodeType === 3 && n.nodeValue.length > 0 && n.nodeValue.trim() === '')
+      assert.deepEqual(blancsResiduels.map((n: any) => JSON.stringify(n.nodeValue)), [], 'nœud 100% blanc non vidé')
     })
   })
 

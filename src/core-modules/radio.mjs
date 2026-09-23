@@ -10,7 +10,8 @@
     self = @
     $checked = true
     $group   = $value
-    scope = @closest('form') ?? document
+    # closest('form') ne sort jamais d'un shadow root : repli sur sa racine (shadow root si présent, document sinon)
+    scope = @closest('form') ?? @getRootNode() ?? document
     # sécurité : un name à guillemet cassait le sélecteur (SyntaxError sur querySelectorAll)
     safeName = if typeof CSS != 'undefined' and CSS.escape then CSS.escape($name) else String($name).replace(/["\\]/g, '\\$&')
     sel = 'mjs-radio[name="' + safeName + '"]'

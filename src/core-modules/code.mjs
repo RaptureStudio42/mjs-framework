@@ -22,13 +22,19 @@
   dedent = ->
     ns = nodes()
     return unless ns.length
+    # <@slot {i}> (éditeur de tuto) projette UN SEUL élément déjà structuré (<code data-file>,
+    # un <div> par ligne) : le texte à dédenter est dans SES enfants, pas dans ce wrapper lui-même
+    ns = Array.from(ns[0].childNodes) if ns.length is 1 and ns[0].nodeType is 1
+    return unless ns.length
     lines = ns.map((n)-> n.textContent or '').join('').split('\n')
     pads  = lines.slice(1).filter((l)-> l.trim()).map((l)-> l.match(/^[ \t]*/)[0].length)
     pad   = if pads.length then Math.min(...pads) else 0
     cut   = new RegExp('\\n[ \\t]{0,' + pad + '}', 'g')
     texts = ns.filter((n)-> n.nodeType is 3)
     return unless texts.length
-    texts.forEach (n)-> n.nodeValue = n.nodeValue.replace(cut, '\n')
+    # un nœud 100% blanc n'est que l'espacement entre éléments du gabarit (ex. un <div> par ligne) :
+    # aucun contenu à dédenter, et le garder à 1 \n doublerait un saut de ligne déjà posé par ces éléments
+    texts.forEach (n)-> n.nodeValue = if n.nodeValue.trim() then n.nodeValue.replace(cut, '\n') else ''
     first = texts[0]
     last  = texts[texts.length - 1]
     first.nodeValue = first.nodeValue.replace(/^[ \t]*\n/, '')

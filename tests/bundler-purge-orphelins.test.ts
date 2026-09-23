@@ -273,4 +273,32 @@ describe('Bundler.pruneOrphans() — purge des orphelins d\'outputDir après un 
     await bundler.close()
     await bundlerNeuf.close()
   })
+
+  it('mjs_ssr_head est ancré au tiret du hash : un asset PROJET au nom voisin n\'est plus protégé à tort (trouvé 23/09)', async () => {
+    const root   = mjsTmp('purge-ssr-head-boundary')
+    const srcDir = join(root, 'src')
+    const outDir = join(root, 'out')
+    mkdirSync(srcDir, { recursive: true })
+    writeFileSync(join(srcDir, 'a.mjs'), comp('a'))
+
+    const bundler = new Bundler({ sourceDir: srcDir, outputDir: outDir, manifestPath: join(outDir, 'bundle.js') })
+    const stats = await bundler.compile()
+    assert.equal(stats.errors.length, 0, stats.errors.map(e => e.message).join('\n'))
+    bundler.pruneOrphans() // repart d'un dossier qui ne contient QUE ce que ce build vient d'émettre
+
+    // un VRAI fragment écrit par le rendu serveur (server/ssr-head.ts, nom FIXE "mjs_ssr_head")
+    // doit rester protégé — jamais émis par compile(), donc "orphelin" pour le bundler seul.
+    writeFileSync(join(outDir, 'mjs_ssr_head-a1b2c3d4.css'), '/* head */')
+    // un asset de PROJET dont le nom commence, par pure coïncidence, comme le nom fixe ci-dessus
+    // — mais SANS le tiret juste après. AVANT le fix, le préfixe non ancré le protégeait quand
+    // même, impurgeable pour toujours même orphelin réel. `.css` (pas `.png`) : `knownExt` par
+    // défaut n'inclut que .js/.css/.map + les formats d'image CONFIGURÉS — .css évite de dépendre
+    // du format d'image par défaut, non pertinent pour ce test précis.
+    writeFileSync(join(outDir, 'mjs_ssr_headline-a1b2c3d4.css'), '.orphelin{}')
+
+    const { removed } = bundler.pruneOrphans()
+    assert.ok(!removed.includes('mjs_ssr_head-a1b2c3d4.css'), 'le vrai fragment serveur doit rester protégé')
+    assert.ok(removed.includes('mjs_ssr_headline-a1b2c3d4.css'), 'AVANT le fix : cet orphelin de projet échappait à tort à la purge')
+    await bundler.close()
+  })
 })

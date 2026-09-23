@@ -132,8 +132,17 @@ function scanInterpAt(src: string, i: number): number {
     const c = src[j]
     if (c === '{') { depth++; j++; continue }
     if (c === '}') { depth--; j++; if (depth === 0) return j; continue }
-    if (c === '`' || c === '"' || c === "'" || (c === '/' && (src[j + 1] === '/' || src[j + 1] === '*'))) {
-      const e = scanInertAt(src, j)                        //chaîne/commentaire imbriqué : sauté d'un bloc
+    // AVANT : un `/` n'était sauté en bloc que pour `//`/`/* */` — un littéral regex générique
+    // (`/…/`) tombait dans le `j++` du bas, caractère par caractère. Un backtick DANS ce regex
+    // (`/`/`) était alors vu, à l'itération suivante, comme un VRAI début de gabarit imbriqué
+    // (branche `c === '`'` juste en dessous) : le scan partait chercher un backtick fermant
+    // n'importe où plus loin, décalait la position, et corrompait le texte littéral du gabarit
+    // voisin — trouvé en revue le 23/09/2026, prouvé par exécution. scanInertAt sait déjà
+    // distinguer regex/division (ouvreUneRegex, cf. scanInertAt ci-dessus et sigils.ts) : lui
+    // déléguer TOUT `/` laisse la division retomber sur le même repli `j++` qu'avant (aucun
+    // littéral détecté), sans rien changer pour elle.
+    if (c === '`' || c === '"' || c === "'" || c === '/') {
+      const e = scanInertAt(src, j)                        //chaîne/commentaire/regex imbriqué : sauté d'un bloc
       j = e < 0 ? j + 1 : e
       continue
     }

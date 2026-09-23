@@ -14,7 +14,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs'
 import { resolve, join, extname } from 'node:path'
 import { normalizeUrlPrefix, type MjsConfig } from '../bundler/config.js'
-import { HMRServer, hmrClientSnippet, isTrustedDevOrigin } from './hmr.js'
+import { HMRServer, hmrClientSnippet, isTrustedDevOrigin, hasTrustedBrowserOrigin } from './hmr.js'
 import { shell, isRealPathWithin, MIME } from './render-server.js'
 import { buildSsrHead } from './ssr-head.js'
 import { rewriteThemeValue } from './theme-write.js'
@@ -52,6 +52,22 @@ const THEME_VALUE_RE = new RegExp('^(?:#[0-9A-Fa-f]{3,8}|(?:' + THEME_FN + ')\\(
 /** Plafond de longueur, tenu à part du motif : une valeur légale mais absurdement longue
  *  n'a rien à faire dans une feuille de style, et un motif borné se relit mal. */
 const THEME_VALUE_MAX = 64
+/** `url(` peut se NICHER dans les parenthèses d'une fonction admise (`var(--x,url(...))`,
+ * `color-mix(in srgb, url(...) 50%, red)`) : la classe de caractères de THEME_VALUE_RE autorise
+ * déjà lettres et parenthèses À L'INTÉRIEUR pour permettre la composition légitime
+ * (`var(--a, var(--b))`), donc n'importe quel nom de fonction — y compris `url` — peut s'y
+ * nicher. Un `url()` EN TÊTE était déjà refusé (aucune des THEME_FN ne s'appelle `url`), mais pas
+ * niché : prouvé par exécution le 23/09/2026, sur LES DEUX routes (/edit et /write). Second
+ * crible, sur la valeur ENTIÈRE, insensible à la casse (CSS l'est) : ferme le trou sans toucher
+ * à la forme ci-dessus, `var()`/`color-mix()` imbriqués légitimes restent acceptés. */
+const THEME_VALUE_FORBIDDEN_RE = /url\s*\(/i
+
+/** Vrai si `value` est une couleur acceptée par l'atelier de thème — forme, longueur ET absence
+ * de fonction réseau nichée. Centralise le crible : /edit (aperçu) et /write (écriture source)
+ * doivent refuser exactement les mêmes valeurs, une seule fois écrit. */
+function isTrustedThemeValue(value: string): boolean {
+  return value.length <= THEME_VALUE_MAX && THEME_VALUE_RE.test(value) && !THEME_VALUE_FORBIDDEN_RE.test(value)
+}
 
 export interface ServerOpts {
   /** Répertoire à servir. */
@@ -329,8 +345,15 @@ export class StaticServer {
       if (req.method !== 'POST') { res.statusCode = 405; res.end('Method Not Allowed'); return }
       // origine vérifiée ICI alors que /edit s'en passe : n'importe quelle page du navigateur
       // peut POSTer en cross-origin sans lire la réponse (cf. l'en-tête de hmr.ts) — sur une
-      // diffusion ça repeint un onglet de dev, ici ça écrirait dans le code du projet
-      if (!isTrustedDevOrigin(req.headers.origin)) { res.statusCode = 403; res.end('Forbidden'); return }
+      // diffusion ça repeint un onglet de dev, ici ça écrirait dans le code du projet.
+      // hasTrustedBrowserOrigin, PAS isTrustedDevOrigin : cette dernière traite l'absence
+      // d'Origin comme une confiance par défaut (pensé pour un curl/outillage local sur les
+      // routes qui ne FONT qu'une diffusion) — un navigateur envoie TOUJOURS Origin sur une
+      // requête cross-origin, donc seul un client qui n'en est PAS un peut l'omettre. Sur une
+      // route qui ÉCRIT dans le code source, ne pas exiger la présence de l'en-tête revenait à
+      // laisser passer n'importe quel client qui l'omet — trouvé 23/09 : réel dès que
+      // `dev.host` est ouvert au réseau (cas documenté, test sur mobile).
+      if (!hasTrustedBrowserOrigin(req.headers.origin)) { res.statusCode = 403; res.end('Forbidden'); return }
       await this.serveThemeWritePost(req, res)
       return
     }
@@ -668,7 +691,7 @@ export class StaticServer {
     for (const [nom, valeur] of Object.entries(vars as Record<string, unknown>)) {
       // '' = retrait de la surcharge (retour à la valeur du source) : valeur LÉGALE, elle
       // traverse le crible de forme qui, lui, exige au moins un caractère.
-      if (typeof valeur !== 'string' || valeur.length > THEME_VALUE_MAX || !THEME_NAME_RE.test(nom) || (valeur !== '' && !THEME_VALUE_RE.test(valeur))) {
+      if (typeof valeur !== 'string' || !THEME_NAME_RE.test(nom) || (valeur !== '' && !isTrustedThemeValue(valeur))) {
         refusees.push(nom)
         continue
       }
@@ -711,7 +734,7 @@ export class StaticServer {
     // dans une feuille de style DU DÉPÔT, pas seulement dans un onglet de dev. La chaîne vide —
     // le « rétablir » de l'aperçu — n'a aucun sens ici : on ne devine pas une valeur d'origine.
     if (typeof name !== 'string' || !THEME_NAME_RE.test(name)) { rendre({ written: false, reason: 'nom-refuse' }); return }
-    if (typeof value !== 'string' || value === '' || value.length > THEME_VALUE_MAX || !THEME_VALUE_RE.test(value)) { rendre({ written: false, reason: 'valeur-refusee' }); return }
+    if (typeof value !== 'string' || value === '' || !isTrustedThemeValue(value)) { rendre({ written: false, reason: 'valeur-refusee' }); return }
     if (typeof file !== 'string' || file === '') { rendre({ written: false, reason: 'fichier-manquant' }); return }
     // `mjs dev` connaît la racine du projet (cli.ts la passe toujours) ; un StaticServer monté à
     // la main n'en a pas — sans elle on ne sait pas contre quoi borner le chemin, donc on ne

@@ -57,6 +57,49 @@ function stringDelimAt(html: string, i: number): string | null {
   return c === '\'' || c === '"' || c === '`' ? c : null
 }
 
+// scanTemplateLiteral — backtick ouvrant en `openIdx` : rend l'offset APRÈS le backtick fermant
+// du MÊME niveau, en traversant les interpolations `${…}` (qui peuvent elles-mêmes contenir des
+// gabarits, chaînes et accolades imbriqués), ou -1 si jamais refermé. Port LOCAL du même
+// algorithme que src/lexer/index.ts (scanTemplateAt/scanInterpAt) — dupliqué plutôt qu'importé
+// pour garder ce module SANS DÉPENDANCE (cf. commentaire de tête du fichier).
+// AVANT : le scan `{`/`}` de findMacroTagEnd traitait un gabarit comme une chaîne ORDINAIRE via
+// stringDelimAt/strDelim, refermée au PREMIER backtick littéral — un backtick niché dans une
+// interpolation (`` `a${ `x}y` }b` ``) la refermait TROP TÔT, laissant le `}` de "x}y" (qui
+// aurait dû rester protégé DANS la chaîne nichée) décrémenter la profondeur `{`/`}` de la balise
+// elle-même : panne muette, balise tronquée, reliquat de code fuyant comme texte du document
+// (trouvé en revue le 23/09/2026, cf. test dédié).
+function scanTemplateLiteral(html: string, openIdx: number): number {
+  let j = openIdx + 1
+  while (j < html.length) {
+    const c = html[j]
+    if (c === '\\') { j += 2; continue }
+    if (c === '`') return j + 1
+    if (c === '$' && html[j + 1] === '{') {
+      let d = 1
+      j += 2
+      while (j < html.length && d > 0) {
+        const e = html[j]
+        if (e === '\\') { j += 2; continue }
+        if (e === '{') { d++; j++; continue }
+        if (e === '}') { d--; j++; continue }
+        if (e === '`') { const end = scanTemplateLiteral(html, j); if (end < 0) return -1; j = end; continue }
+        if (e === '"' || e === "'") {
+          const q = e
+          j++
+          while (j < html.length && html[j] !== q) { if (html[j] === '\\') j++; j++ }
+          j++
+          continue
+        }
+        j++
+      }
+      if (d > 0) return -1
+      continue
+    }
+    j++
+  }
+  return -1
+}
+
 export function findMacroTagEnd(html: string, from: number): number {
   let depth = 0
   let i = from
@@ -82,7 +125,15 @@ export function findMacroTagEnd(html: string, from: number): number {
     }
     if (depth > 0) {
       const delim = stringDelimAt(html, i)
-      if (delim !== null) { strDelim = delim; i += delim.length; continue }
+      if (delim !== null) {
+        if (delim === '`') {
+          const end = scanTemplateLiteral(html, i)
+          if (end < 0) return -1   // gabarit jamais refermé : même repli que looksLikeOpenTag plus bas
+          i = end
+          continue
+        }
+        strDelim = delim; i += delim.length; continue
+      }
     }
     // balise ouverte détectée EN PROFONDEUR (accolade d'attribut jamais refermée) : signal de
     // fin de scan, l'appelant lève déjà `macro-balise-non-fermee` sur un -1.

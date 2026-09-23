@@ -85,7 +85,9 @@
 
   refreshOptions = ->
     return unless slotRef
-    els = slotRef.assignedElements().filter (el)-> el.tagName.toLowerCase() == 'mjs-option'
+    # assignedElements() ne rend que les enfants DIRECTS du slot : un wrapper intermédiaire est
+    # lui-même slotté, pas les <mjs-option> qu'il contient → on descend dedans au besoin
+    els = slotRef.assignedElements().flatMap (el)-> if el.tagName.toLowerCase() == 'mjs-option' then [el] else Array.from(el.querySelectorAll('mjs-option'))
     $optionsData = els.map (el)-> { value: el.getAttribute('value'), icon: el.getAttribute('icon'), label: (el.textContent or '').trim() }
 
   updatePlacement = ->

@@ -14,11 +14,13 @@
     els = slotRef?.assignedElements() ?? []
     target = els[0]
     if target
-      if not target.id
-        target.id = 'mjs-field-' + Math.random().toString(36).slice(2, 9)
-      $fieldId = target.id
+      # target peut envelopper le vrai champ (icône/affixe) : id/for doivent viser le champ natif, pas l'enveloppe
+      native = if target.matches?('input, select, textarea') then target else target.querySelector?('input, select, textarea') or target.querySelector?('[name]') or target
+      if not native.id
+        native.id = 'mjs-field-' + Math.random().toString(36).slice(2, 9)
+      $fieldId = native.id
       # name FACULTATIF sur l'enveloppe : le champ porte DÉJÀ le sien, sans quoi aucun formulaire ne le ramasse
-      $name = target.getAttribute?('name') or target.querySelector?('[name]')?.getAttribute('name') or '' unless $name
+      $name = native.getAttribute?('name') or '' unless $name
     µ.error('[mjs-field] aucun « name » : ni sur <@field>, ni sur le champ enveloppé.') unless $name
 
   µeffect ->
